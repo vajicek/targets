@@ -7,33 +7,40 @@
 #include <cmath>
 #include <functional>
 
+#include <boost/format.hpp>
+#include <boost/filesystem.hpp>
+
 #include "utils.h"
 
 using namespace cv;
 using namespace std;
+namespace fs = boost::filesystem;
 
-string TEST_IMAGE = "/home/vajicek/data/targets/img0001.jpg";
+string TEST_IMAGE = "testdata/img0001.jpg";
+string OUTPUT_DIR = "output/";
 
+std::string output(std::string filename) {
+	return (fs::path(OUTPUT_DIR) / filename).string();
+}
 
 Mat loadInput(const string &filename) {
 	Mat image = imread(filename.c_str(), CV_LOAD_IMAGE_COLOR);
 	if (!image.data) {
-		std::cerr <<  "Could not open or find the image" << std::endl ;
+		cerr <<  "Could not open or find the image" << endl ;
 		abort();
 	}
 	return image;
 }
 
 Mat uniformResize(const Mat &image, int width) {
-	Mat small_image;
-
 	int new_width = width;
 	int new_height = width * image.size[0] / static_cast<double>(image.size[1]);
 
-	std::cout << "original size: " << image.size[0] << "," << image.size[1] << "\n";
-	std::cout << "new size: " << new_height << "," << new_width << "\n";
+	cout << "original size: " << image.size[0] << "," << image.size[1] << "\n";
+	cout << "new size: " << new_height << "," << new_width << "\n";
 
-	cv::resize(image, small_image, Size(new_width, new_height));
+	Mat small_image;
+	resize(image, small_image, Size(new_width, new_height));
 	return small_image;
 }
 
@@ -43,13 +50,12 @@ Mat edges(const Mat &image, double t1, double t2) {
 	return edges;
 }
 
-void benchmark_edges(const Mat &image) {
-	for(auto t1: std::vector<double>{50, 150, 350, 400, 500, 600, 700}) {
-		for(auto t2: std::vector<double>{150, 250, 450, 500, 600, 700, 800}) {
+/// output images filtered with differently configured edge detector
+void benchmarkEdges(const Mat &image) {
+	for(auto t1: vector<double>{50, 150, 350, 400, 500, 600, 700}) {
+		for(auto t2: vector<double>{150, 250, 450, 500, 600, 700, 800}) {
 			Mat edge_image = edges(image, t1, t2);
-			std::stringstream ss;
-			ss << "edges" << static_cast<int>(t1) << "_" << static_cast<int>(t2) << ".png";
-			imwrite(ss.str().c_str(), edge_image);
+			imwrite(output(boost::str(boost::format("edges_%1%.png") % t2)), edge_image);
 		}
 	}
 }
@@ -95,7 +101,7 @@ struct RansacRectangleFromLines {
 
 		sort(intersections.begin(), intersections.end(),
 			[center](const Vec2f &a, const Vec2f &b) -> bool {
-				return std::atan2(a[0] - center[0], a[1] - center[1]) > std::atan2(b[0] - center[0], b[1] - center[1]);
+				return atan2(a[0] - center[0], a[1] - center[1]) > atan2(b[0] - center[0], b[1] - center[1]);
 			});
 
 
@@ -104,9 +110,9 @@ struct RansacRectangleFromLines {
 		bool is_rect = dist_std_dev < 0.9 * dist_mean;
 
 		for (Vec2f intersection_point : intersections) {
-			std::cout << intersection_point << "(" << std::atan2(intersection_point[0], intersection_point[1]) << "), ";
+			cout << intersection_point << "(" << atan2(intersection_point[0], intersection_point[1]) << "), ";
 		}
-		std::cout << " " << is_rect << "\n";
+		cout << " " << is_rect << "\n";
 
 		return is_rect;
 	}
@@ -119,13 +125,13 @@ struct RansacRectangleFromLines {
 			auto four = get_random_n_tuple(4, lines_.size());
 			sort(four.begin(), four.end());
 			if (is_rectangle(four)) {
-				std::cout << four[0] << ", " << four[1] << ", " << four[2] << ", " << four[3] << "\n";
+				cout << four[0] << ", " << four[1] << ", " << four[2] << ", " << four[3] << "\n";
 			}
 		}
 	}
 };
 
-bool detect_rectagle(const Mat &image) {
+bool detectRectagle(const Mat &image) {
 	Mat edge_image = edges(image, 500, 600);
 	vector<Vec2f> lines;
 	HoughLines(edge_image, lines, 1, CV_PI/180, 100, 0, 0);
@@ -142,12 +148,11 @@ bool detect_rectagle(const Mat &image) {
 
 	Vec2f intersection_point;
 	intersection(a, b, intersection_point);
-	std::cout << intersection_point << "\n";
+	cout << intersection_point << "\n";
 
 	circle(image, Point(intersection_point[0], intersection_point[1]), 10, Scalar(255, 0, 0), -1);
 
-
-	imwrite("points.png", image);
+	imwrite(output("points.png"), image);
 
 	//RansacRectangleFromLines ransacRectangleFromLines(lines);
 	//ransacRectangleFromLines.find_rectangle();
@@ -156,28 +161,39 @@ bool detect_rectagle(const Mat &image) {
 	//vector<Vec2f> intersections = ransacRectangleFromLines.get_intersections(lines4);
 
 	//for(Vec2f a: intersections) {
-	//	std::cout << a << "\n";
+	//	cout << a << "\n";
 	//	circle(image, Point(a[1], a[1]), 10, Scalar( 255, 0, 0 ), -1);
 	//}
 
 	return true;
 }
 
-void benchmark_lines(const Mat &image) {
-	Mat edge_image = edges(image, 500, 600);
+void drawLines(Mat color_image, vector<Vec2f> lines, string filename) {
+	cout << "hough lines count = " << lines.size() << "\n";
+	for(size_t i = 0; i < lines.size(); i++) {
+		Line line1 = createLineFromSlope(lines[i]);
+		line(color_image, Point(line1.a_), Point(line1.b_), Scalar(0,0,255), 3, CV_AA);
+	}
+	imwrite(filename, color_image);
+}
+
+// Benchmark locate edges in the image. Combines canny and hough.
+void houghLinesOnEdges(const Mat &image, double t1, double t2) {
+	Mat edge_image = edges(image, t1, t2);
 	vector<Vec2f> lines;
 	HoughLines(edge_image, lines, 1, CV_PI/180, 100, 0, 0);
 
-	Mat cdst;
-	cvtColor(edge_image, cdst, COLOR_GRAY2BGR);
-	std::cout << "hough lines count = " << lines.size() << "\n";
-	for(size_t i = 0; i < lines.size(); i++) {
-		Line line1 = createLineFromSlope(lines[i]);
-		line(cdst, Point(line1.a_), Point(line1.b_), Scalar(0,0,255), 3, CV_AA);
+	Mat color_image;
+	cvtColor(edge_image, color_image, COLOR_GRAY2BGR);
+	drawLines(color_image, lines, output(boost::str(boost::format("lines_%1%_%2%.png") % t1 % t2)));
+}
+
+void benchmarkLines(const Mat &image) {
+	for(auto t1: vector<double>{50, 150, 350, 400, 500, 600, 700}) {
+		for(auto t2: vector<double>{150, 250, 450, 500, 600, 700, 800}) {
+			houghLinesOnEdges(image, t1, t2);
+		}
 	}
-	std::stringstream ss;
-	ss << "lines.png";
-	imwrite(ss.str().c_str(), cdst);
 }
 
 void show() {
@@ -190,10 +206,10 @@ void show() {
 int main(int argc, char** argv) {
 	Mat image = loadInput(TEST_IMAGE);
 	Mat small_image = uniformResize(image, 512);
-	//benchmark_edges(small_image);
 
-	//benchmark_lines(small_image);
-	detect_rectagle(small_image);
+	benchmarkEdges(small_image);
+	benchmarkLines(small_image);
+	//detectRectagle(small_image);
 
 	return 0;
 }

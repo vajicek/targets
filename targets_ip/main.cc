@@ -36,8 +36,8 @@ Mat uniformResize(const Mat &image, int width) {
 	int new_width = width;
 	int new_height = width * image.size[0] / static_cast<double>(image.size[1]);
 
-	cout << "original size: " << image.size[0] << "," << image.size[1] << "\n";
-	cout << "new size: " << new_height << "," << new_width << "\n";
+	cerr << "original size: " << image.size[0] << "," << image.size[1] << "\n";
+	cerr << "new size: " << new_height << "," << new_width << "\n";
 
 	Mat small_image;
 	resize(image, small_image, Size(new_width, new_height));
@@ -169,7 +169,6 @@ bool detectRectagle(const Mat &image) {
 }
 
 void drawLines(Mat color_image, vector<Vec2f> lines, string filename) {
-	cout << "hough lines count = " << lines.size() << "\n";
 	for(size_t i = 0; i < lines.size(); i++) {
 		Line line1 = createLineFromSlope(lines[i]);
 		line(color_image, Point(line1.a_), Point(line1.b_), Scalar(0,0,255), 3, CV_AA);
@@ -178,7 +177,7 @@ void drawLines(Mat color_image, vector<Vec2f> lines, string filename) {
 }
 
 // Benchmark locate edges in the image. Combines canny and hough.
-void houghLinesOnEdges(const Mat &image, double t1, double t2) {
+vector<Vec2f> houghLinesOnEdges(const Mat &image, double t1, double t2) {
 	Mat edge_image = edges(image, t1, t2);
 	vector<Vec2f> lines;
 	HoughLines(edge_image, lines, 1, CV_PI/180, 100, 0, 0);
@@ -186,12 +185,26 @@ void houghLinesOnEdges(const Mat &image, double t1, double t2) {
 	Mat color_image;
 	cvtColor(edge_image, color_image, COLOR_GRAY2BGR);
 	drawLines(color_image, lines, output(boost::str(boost::format("lines_%1%_%2%.png") % t1 % t2)));
+
+	return lines;
 }
 
-void benchmarkLines(const Mat &image) {
+vector<tuple<double, double, vector<Vec2f>>> benchmarkLines(const Mat &image) {
+	vector<tuple<double, double, vector<Vec2f>>> retval;
 	for(auto t1: vector<double>{50, 150, 350, 400, 500, 600, 700}) {
 		for(auto t2: vector<double>{150, 250, 450, 500, 600, 700, 800}) {
-			houghLinesOnEdges(image, t1, t2);
+			auto lines = houghLinesOnEdges(image, t1, t2);
+			retval.push_back(tuple(t1, t2, lines));
+		}
+	}
+	return retval;
+}
+
+void dumpLinesToTable(vector<tuple<double, double, vector<Vec2f>>> lines) {
+	cout << "t1,t2,count,dist,ang" << endl;
+	for (auto line_set: lines) {
+		for (auto line : get<2>(line_set)) {
+			cout << get<0>(line_set) << "," << get<1>(line_set) << "," << lines.size() << "," << line.val[0] << "," << line.val[1] << endl;
 		}
 	}
 }
@@ -208,7 +221,7 @@ int main(int argc, char** argv) {
 	Mat small_image = uniformResize(image, 512);
 
 	benchmarkEdges(small_image);
-	benchmarkLines(small_image);
+	dumpLinesToTable(benchmarkLines(small_image));
 	//detectRectagle(small_image);
 
 	return 0;

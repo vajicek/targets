@@ -185,7 +185,6 @@ vector<Vec2f> houghLinesOnEdges(const Mat &image, double t1, double t2) {
 	Mat color_image;
 	cvtColor(edge_image, color_image, COLOR_GRAY2BGR);
 	drawLines(color_image, lines, output(boost::str(boost::format("lines_%1%_%2%.png") % t1 % t2)));
-
 	return lines;
 }
 

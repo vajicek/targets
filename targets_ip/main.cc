@@ -1,6 +1,7 @@
 #include <opencv2/core/core.hpp>
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
+#include <opencv2/videoio.hpp>
 #include <iostream>
 #include <string>
 #include <cstdlib>
@@ -215,12 +216,43 @@ void show() {
 	//waitKey(0);
 }
 
-int main(int argc, char** argv) {
-	Mat image = loadInput(TEST_IMAGE);
-	Mat small_image = uniformResize(image, 512);
+void captureCameraImage() {
+	VideoCapture capture("http://192.168.11.152:9999/video");
+	int i = 0;
 
-	benchmarkEdges(small_image);
-	dumpLinesToTable(benchmarkLines(small_image));
+	//namedWindow("Display window", WINDOW_AUTOSIZE);
+	while (capture.isOpened()) {
+		Mat edge_image;
+		Mat frame;
+		cout << "capture.read" << endl;
+		cout << "frame " << i << endl;
+		capture.grab();
+		capture.retrieve(frame);
+		cout << "fps: " << capture.get(CV_CAP_PROP_FPS) << endl;
+		//auto ret = capture.read(frame);
+		if (frame.empty()) {
+			cout << "frame.empty" << endl;
+		} else {
+			cout << "call imshow" << endl;
+			Canny(frame, edge_image, 50, 200, 3, false);
+			//imshow("frame", frame);
+			imshow("edges", edge_image);
+		}
+		if (waitKey(25) & 0xFF == int('q')) {
+			break;
+		}
+		i++;
+	}
+}
+
+int main(int argc, char** argv) {
+	captureCameraImage();
+
+	//Mat image = loadInput(TEST_IMAGE);
+	//Mat small_image = uniformResize(image, 512);
+
+	//benchmarkEdges(small_image);
+	//dumpLinesToTable(benchmarkLines(small_image));
 	//detectRectagle(small_image);
 
 	return 0;

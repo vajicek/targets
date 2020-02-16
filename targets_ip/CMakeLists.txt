@@ -5,14 +5,20 @@ PROJECT(targets_ip)
 # DEPENDENCIES
 FIND_PACKAGE(Boost 1.36.0 COMPONENTS unit_test_framework date_time filesystem system)
 IF(Boost_FOUND)
-  INCLUDE_DIRECTORIES(${Boost_INCLUDE_DIRS})
+	INCLUDE_DIRECTORIES(${Boost_INCLUDE_DIRS})
 ENDIF()
 FIND_PACKAGE(OpenCV REQUIRED)
 
 SET(CMAKE_CXX_STANDARD 17)
 
 # SOURCES
-SET(SRC main.cc utils.cc)
+SET(SRC main.cc
+	video.cc
+	linedetect.cc
+	rectdetect.cc
+	preproc.cc
+	io.cc
+	utils.cc)
 
 INCLUDE_DIRECTORIES(include)
 INCLUDE_DIRECTORIES(${CMAKE_CURRENT_SOURCE_DIR})
@@ -25,9 +31,9 @@ TARGET_LINK_LIBRARIES(${PROJECT_NAME} LINK_PUBLIC ${Boost_LIBRARIES} ${OpenCV_LI
 ENABLE_TESTING()
 
 FUNCTION(UNITTEST name test_src)
-  ADD_EXECUTABLE(${PROJECT_NAME}_${name}_test ${test_src})
-  TARGET_LINK_LIBRARIES(${PROJECT_NAME}_${name}_test LINK_PUBLIC ${Boost_UNIT_TEST_FRAMEWORK_LIBRARY})
-  ADD_TEST(NAME ${name} COMMAND ${PROJECT_NAME}_${name}_test)
+	ADD_EXECUTABLE(${PROJECT_NAME}_${name}_test ${test_src})
+	TARGET_LINK_LIBRARIES(${PROJECT_NAME}_${name}_test LINK_PUBLIC ${Boost_UNIT_TEST_FRAMEWORK_LIBRARY})
+	ADD_TEST(NAME ${name} COMMAND ${PROJECT_NAME}_${name}_test)
 ENDFUNCTION(UNITTEST)
 
 UNITTEST(utils "utils.cc;utils_test.cc")

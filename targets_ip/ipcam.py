@@ -3,7 +3,8 @@
 import cv2
 import numpy as np
 
-cap = cv2.VideoCapture("http://192.168.11.152:9999/video")
+cap = cv2.VideoCapture("http://192.168.1.129:8080/video")
+#cap = cv2.VideoCapture("/dev/video0")
 
 while(True):
 	ret, frame = cap.read()

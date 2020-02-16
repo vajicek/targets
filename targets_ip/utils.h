@@ -1,3 +1,6 @@
+#ifndef _UTILS_H
+#define _UTILS_H
+#pragma once
 
 #include <opencv2/core/core.hpp>
 #include <vector>
@@ -34,3 +37,5 @@ auto std_dev(G element_getter, size_t len) {
 	auto var_val = mean([&](int i) { return element_getter(i) - mean_val; }, len);
 	return sqrt(var_val);
 }
+
+#endif

@@ -4,7 +4,7 @@
 
 #include <vector>
 
-#include <opencv2/core/core.hpp>
+#include <opencv2/core/mat.hpp>
 
 std::vector<int> get_random_n_tuple(int count, int max);
 float dist(const cv::Vec2f &a, const cv::Vec2f &b);

@@ -41,7 +41,7 @@ Mat loadInput(const string &filename) {
 }
 
 void drawLines(Mat color_image, vector<Vec2f> lines, string filename) {
-	for(size_t i = 0; i < lines.size(); i++) {
+	for (size_t i = 0; i < lines.size(); i++) {
 		Line line1 = createLineFromSlope(lines[i]);
 		line(color_image, Point(line1.a_), Point(line1.b_), Scalar(0, 0, 255), 3, cv::LINE_AA);
 	}

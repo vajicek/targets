@@ -21,9 +21,6 @@ bool intersection(Line a, Line b, Vec2f &r) {
 */
 
 bool intersection(Line a, Line b, Vec2f *r) {
-	std::cout << a.a_ << ", " << a.b_ << "\n";
-	std::cout << b.a_ << ", " << b.b_ << "\n";
-
 	Vec2f a_norm = a.norm();
 	float c1 = a_norm.dot(a.a_);
 
@@ -41,9 +38,10 @@ bool intersection(Line a, Line b, Vec2f *r) {
 
 // O(n^2)
 vector<int> get_random_n_tuple(int count, int max) {
+	static unsigned int seed = 123;
 	vector<int> result;
 	while(result.size() < count) {
-		int num = rand_r() % max;
+		int num = rand_r(&seed) % max;
 		if (find(result.begin(), result.end(), num) == result.end()) {
 			result.push_back(num);
 		}

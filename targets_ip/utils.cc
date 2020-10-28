@@ -1,9 +1,10 @@
-
 #include <utils.h>
 #include <iostream>
 
-using namespace cv;
-using namespace std;
+using cv::Vec2f;
+using cv::Point2f;
+using cv::Point;
+using std::vector;
 
 /*
 bool intersection(Line a, Line b, Vec2f &r) {
@@ -19,7 +20,7 @@ bool intersection(Line a, Line b, Vec2f &r) {
 }
 */
 
-bool intersection(Line a, Line b, Vec2f &r) {
+bool intersection(Line a, Line b, Vec2f *r) {
 	std::cout << a.a_ << ", " << a.b_ << "\n";
 	std::cout << b.a_ << ", " << b.b_ << "\n";
 
@@ -33,17 +34,17 @@ bool intersection(Line a, Line b, Vec2f &r) {
 	if (abs(cross) < 1e-8) {
 		return false;
 	}
-	r = Vec2f(b_norm[1] * c1 - a_norm[1] * c2, a_norm[0] * c2 - b_norm[0] * c1) / cross;
+	*r = Vec2f(b_norm[1] * c1 - a_norm[1] * c2, a_norm[0] * c2 - b_norm[0] * c1) / cross;
 	return true;
 }
 
 
-//O(n^2)
+// O(n^2)
 vector<int> get_random_n_tuple(int count, int max) {
 	vector<int> result;
 	while(result.size() < count) {
-		int num = rand() % max;
-		if (find(result.begin(), result.end(), num) == result.end()){
+		int num = rand_r() % max;
+		if (find(result.begin(), result.end(), num) == result.end()) {
 			result.push_back(num);
 		}
 	}

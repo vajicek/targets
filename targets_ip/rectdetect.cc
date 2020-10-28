@@ -1,8 +1,9 @@
+#include <iostream>
+#include <string>
+
 #include <opencv2/core/core.hpp>
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
-#include <iostream>
-#include <string>
 
 #include <boost/format.hpp>
 #include <boost/filesystem.hpp>
@@ -11,14 +12,19 @@
 #include "io.h"
 #include "preproc.h"
 
-using namespace cv;
-using namespace std;
+using cv::Vec2f;
+using cv::Mat;
+using cv::Point;
+using cv::Scalar;
+using std::vector;
+using std::cout;
+
 namespace fs = boost::filesystem;
 
 struct RansacRectangleFromLines {
 	vector<Vec2f> lines_;
 
-	RansacRectangleFromLines(vector<Vec2f> lines): lines_(lines) {
+	explicit RansacRectangleFromLines(vector<Vec2f> lines): lines_(lines) {
 	}
 
 	vector<Vec2f> get_intersections(vector<int> lines4) {
@@ -34,7 +40,7 @@ struct RansacRectangleFromLines {
 					continue;
 				}
 
-				if (intersection(a, b, intersection_point)){
+				if (intersection(a, b, &intersection_point)) {
 					intersections.push_back(intersection_point);
 				}
 			}
@@ -60,12 +66,19 @@ struct RansacRectangleFromLines {
 			});
 
 
-		float dist_mean = mean([&](int i){ return dist(center, intersections[i]); }, (size_t)intersections.size());
-		float dist_std_dev = std_dev([&](int i){ return dist(center, intersections[i]); }, intersections.size());
+		float dist_mean = mean([&](int i){
+				return dist(center, intersections[i]);
+			}, (size_t)intersections.size());
+		float dist_std_dev = std_dev([&](int i){
+				return dist(center, intersections[i]);
+			}, intersections.size());
 		bool is_rect = dist_std_dev < 0.9 * dist_mean;
 
 		for (Vec2f intersection_point : intersections) {
-			cout << intersection_point << "(" << atan2(intersection_point[0], intersection_point[1]) << "), ";
+			cout << intersection_point
+				<< "("
+				<< atan2(intersection_point[0], intersection_point[1])
+				<< "), ";
 		}
 		cout << " " << is_rect << "\n";
 
@@ -76,7 +89,7 @@ struct RansacRectangleFromLines {
 		// attempts
 		int attempts = lines_.size() * 100;
 		for (int i = 0; i < attempts; i++) {
-			//select four lines
+			// select four lines
 			auto four = get_random_n_tuple(4, lines_.size());
 			sort(four.begin(), four.end());
 			if (is_rectangle(four)) {
@@ -98,27 +111,27 @@ bool detectRectagle(const Mat &image) {
 	Line a = createLineFromSlope(lines[0]);
 	Line b = createLineFromSlope(lines[1]);
 
-	line(image, Point(a.a_), Point(a.b_), Scalar(0,0,255), 3, CV_AA);
-	line(image, Point(b.a_), Point(b.b_), Scalar(0,0,255), 3, CV_AA);
+	line(image, Point(a.a_), Point(a.b_), Scalar(0, 0, 255), 3, cv::LINE_AA);
+	line(image, Point(b.a_), Point(b.b_), Scalar(0, 0, 255), 3, cv::LINE_AA);
 
 	Vec2f intersection_point;
-	intersection(a, b, intersection_point);
+	intersection(a, b, &intersection_point);
 	cout << intersection_point << "\n";
 
 	circle(image, Point(intersection_point[0], intersection_point[1]), 10, Scalar(255, 0, 0), -1);
 
 	imwrite(output("points.png"), image);
 
-	//RansacRectangleFromLines ransacRectangleFromLines(lines);
-	//ransacRectangleFromLines.find_rectangle();
+	// RansacRectangleFromLines ransacRectangleFromLines(lines);
+	// ransacRectangleFromLines.find_rectangle();
 
-	//auto lines4 = get_random_n_tuple(4, lines.size());
-	//vector<Vec2f> intersections = ransacRectangleFromLines.get_intersections(lines4);
+	// auto lines4 = get_random_n_tuple(4, lines.size());
+	// vector<Vec2f> intersections = ransacRectangleFromLines.get_intersections(lines4);
 
-	//for(Vec2f a: intersections) {
-	//	cout << a << "\n";
-	//	circle(image, Point(a[1], a[1]), 10, Scalar( 255, 0, 0 ), -1);
-	//}
+	// for(Vec2f a: intersections) {
+	// 	cout << a << "\n";
+	// 	circle(image, Point(a[1], a[1]), 10, Scalar( 255, 0, 0 ), -1);
+	// }
 
 	return true;
 }

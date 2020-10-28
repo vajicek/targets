@@ -2,8 +2,9 @@
 #define _IO_H
 #pragma once
 
-#include <opencv2/core/core.hpp>
 #include <vector>
+#include <string>
+#include <opencv2/core/core.hpp>
 
 #include "utils.h"
 

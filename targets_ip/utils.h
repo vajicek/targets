@@ -2,8 +2,9 @@
 #define _UTILS_H
 #pragma once
 
-#include <opencv2/core/core.hpp>
 #include <vector>
+
+#include <opencv2/core/core.hpp>
 
 std::vector<int> get_random_n_tuple(int count, int max);
 float dist(const cv::Vec2f &a, const cv::Vec2f &b);
@@ -20,7 +21,7 @@ Line createLineFromSlope(cv::Vec2f slope_line);
 
 float cosAngleLines(Line a, Line b);
 
-bool intersection(Line a, Line b, cv::Vec2f &r);
+bool intersection(Line a, Line b, cv::Vec2f *r);
 
 template<typename G>
 auto mean(G element_getter, size_t len) {

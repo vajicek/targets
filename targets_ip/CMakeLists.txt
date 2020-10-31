@@ -20,6 +20,7 @@ SET(SRC main.cc
 	rectdetect.cc
 	preproc.cc
 	io.cc
+	target.cc
 	utils.cc)
 
 INCLUDE_DIRECTORIES(include)
@@ -34,8 +35,12 @@ ENABLE_TESTING()
 
 FUNCTION(UNITTEST name test_src)
 	ADD_EXECUTABLE(${PROJECT_NAME}_${name}_test ${test_src})
-	TARGET_LINK_LIBRARIES(${PROJECT_NAME}_${name}_test LINK_PUBLIC ${Boost_UNIT_TEST_FRAMEWORK_LIBRARY})
+	TARGET_LINK_LIBRARIES(${PROJECT_NAME}_${name}_test LINK_PUBLIC
+		${Boost_UNIT_TEST_FRAMEWORK_LIBRARY}
+		${Boost_LIBRARIES}
+		${OpenCV_LIBS})
 	ADD_TEST(NAME ${name} COMMAND ${PROJECT_NAME}_${name}_test)
 ENDFUNCTION(UNITTEST)
 
 UNITTEST(utils "utils.cc;utils_test.cc")
+UNITTEST(target "target.cc;target_test.cc")

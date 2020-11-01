@@ -24,7 +24,29 @@ const Vec3f MISS(0.1, 0.1, 0.1);
 
 const std::vector<Vec3f> COLORS {YELLOW, RED, BLUE, BLACK, WHITE, MISS};
 
-Vec2f plane_ray_intersection(
+Vec3f plane_ray_intersection_3d(
+		const Vec3f &center,
+		const Vec3f &normal,
+		const Vec3f &origin,
+		const Vec3f &direction) {
+	auto offset = -center.dot(normal);
+	auto ray_scale = -(offset + origin.dot(normal)) / direction.dot(normal);
+	return origin + ray_scale * direction;
+}
+
+Vec2f plane_ray_intersection_2d_composed(
+		const Vec3f &center,
+		const Vec3f &up,
+		const Vec3f &normal,
+		const Vec3f &origin,
+		const Vec3f &direction) {
+	auto binorm = normal.cross(up);
+	auto intersection = plane_ray_intersection_3d(center, normal, origin, direction);
+	auto intersection_local = intersection - center;
+	return { intersection_local.dot(binorm), intersection_local.dot(up) };
+}
+
+Vec2f plane_ray_intersection_2d_direct(
 		const Vec3f &center,
 		const Vec3f &up,
 		const Vec3f &normal,
@@ -46,15 +68,6 @@ Vec2f plane_ray_intersection(
 	return Vec2f { x.val[0], x.val[1] };
 }
 
-/*
-Vector3 Intersect(Vector3 planeP, Vector3 planeN, Vector3 rayP, Vector3 rayD)
-{
-    var d = Vector3.Dot(planeP, -planeN);
-    var t = -(d + rayP.z * planeN.z + rayP.y * planeN.y + rayP.x * planeN.x) / (rayD.z * planeN.z + rayD.y * planeN.y + rayD.x * planeN.x);
-    return rayP + t * rayD;
-}
-*/
-
 bool is_in_target(const Vec2f &coord, float base_2) {
 	return coord[0] > -base_2 && coord[0] < base_2 &&
 		coord[1] > -base_2 && coord[1] < base_2;
@@ -62,7 +75,7 @@ bool is_in_target(const Vec2f &coord, float base_2) {
 
 std::optional<uint64> Target::cast_ray_section(const Vec3f &origin,
 	const Vec3f &direction) const {
-	auto coord_intersection = plane_ray_intersection(
+	auto coord_intersection = plane_ray_intersection_2d_direct(
 		center, up, normal, origin, direction);
 	float base_2 = base / 2;
 	if (!is_in_target(coord_intersection, base_2)) {

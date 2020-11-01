@@ -19,8 +19,23 @@ class Target {
 		const cv::Vec3f &direction) const;
 };
 
-double compute_metric(const cv::Mat &camera_image,
-		const Target &target,
-		const float focal_length);
+double compute_metric(
+	const cv::Mat &camera_image,
+	const Target &target,
+	const float focal_length);
+
+cv::Vec2f plane_ray_intersection_2d_composed(
+	const cv::Vec3f &center,
+	const cv::Vec3f &up,
+	const cv::Vec3f &normal,
+	const cv::Vec3f &origin,
+	const cv::Vec3f &direction);
+
+cv::Vec2f plane_ray_intersection_2d_direct(
+	const cv::Vec3f &center,
+	const cv::Vec3f &up,
+	const cv::Vec3f &normal,
+	const cv::Vec3f &origin,
+	const cv::Vec3f &direction);
 
 #endif  // _TARGET_H

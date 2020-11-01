@@ -90,6 +90,20 @@ BOOST_AUTO_TEST_CASE(test_mat_casting) {
 	BOOST_CHECK_EQUAL(mat_3u8_val[2], expected[2]);
 }
 
+BOOST_AUTO_TEST_CASE(plane_ray_intersection) {
+	Vec3f center {0, 0, 120};
+	Vec3f up {0, 1, 0};
+	Vec3f normal {0, 0, -1};
+	Vec3f origin {0, 0, 0};
+	Vec3f direction {0.1, 0.2, 1};
+	auto a = plane_ray_intersection_2d_composed(
+		center, up, normal, origin, direction);
+	auto b = plane_ray_intersection_2d_direct(
+		center, up, normal, origin, direction);
+
+	BOOST_CHECK_EQUAL(a, b);
+}
+
 /*
 Fitting Parameterized 3-D Models to Images
 http://www.ai.mit.edu/courses/6.899/papers/pami91.pdf

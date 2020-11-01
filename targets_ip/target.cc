@@ -46,6 +46,15 @@ Vec2f plane_ray_intersection(
 	return Vec2f { x.val[0], x.val[1] };
 }
 
+/*
+Vector3 Intersect(Vector3 planeP, Vector3 planeN, Vector3 rayP, Vector3 rayD)
+{
+    var d = Vector3.Dot(planeP, -planeN);
+    var t = -(d + rayP.z * planeN.z + rayP.y * planeN.y + rayP.x * planeN.x) / (rayD.z * planeN.z + rayD.y * planeN.y + rayD.x * planeN.x);
+    return rayP + t * rayD;
+}
+*/
+
 bool is_in_target(const Vec2f &coord, float base_2) {
 	return coord[0] > -base_2 && coord[0] < base_2 &&
 		coord[1] > -base_2 && coord[1] < base_2;

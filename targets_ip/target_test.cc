@@ -2,7 +2,7 @@
 
 #define BOOST_TEST_MAIN
 #define BOOST_TEST_DYN_LINK
-#define BOOST_TEST_MODULE UtilsTest
+#define BOOST_TEST_MODULE TargetTest
 
 #include "target.h"
 

@@ -14,46 +14,46 @@ using cv::Vec2i;
 using cv::Vec3f;
 using cv::Vec3b;
 
-void sample(const Target &target,
-		const Vec2f &start,
-		const Vec2f &step,
-		const Vec2i &count) {
-	cv::Mat m(count[1], count[0], CV_32FC3);
-	for (int y = 0; y < count[1]; y++) {
-		for (int x = 0; x < count[0]; x++) {
-			Vec2f coord { static_cast<float>(x), static_cast<float>(y) };
-			Vec2f p { start + coord.mul(step) };
-			Vec3f dir = cv::normalize(Vec3f { p[0], p[1], 120 });
-			auto color = target.cast_ray_color({ 0, 0, 0 }, dir);
-			m.at<Vec3f>(y, x) = color.value_or(Vec3f { 0.1f, 0.0f, 0.1f });
-		}
-	}
-	cv::Mat dst;
-	m.convertTo(dst, CV_8UC3, 255.0, +128);
-	imshow("opencv", dst);
-	cv::waitKey(0);
+cv::Mat load_data() {
+	cv::Mat img = imread("/home/vajicek/src/targets/targets_ip/testdata/img0001_scaled.jpg",
+		cv::IMREAD_COLOR);
+	return img;
 }
 
-BOOST_AUTO_TEST_CASE(test_target) {
+BOOST_AUTO_TEST_CASE(test_target_model_metric) {
+	Target better_target_model {
+		{10.0f, -10.0f, 120.0f},  // center
+		{-0.1f, 0.0f, -1.0f},  // normal
+		{0.0f, 1.0f, 0.0f},  // up
+		120.0f};  // target base
+
+	Target target_model {
+		{0.0f, 0.0f, 120.0f},
+		{0.0f, 0.0f, 0.0f},
+		{0.0f, 1.0f, 0.0f},
+		120.0f};
+
+	auto camera_image = load_data();
+
+	// visualize_metric(camera_image, target_model, 180);
+
+	auto lower_metric = compute_metric(camera_image, better_target_model, 180);
+	auto higher_metric = compute_metric(camera_image, target_model, 180);
+	BOOST_CHECK(lower_metric < higher_metric);
+}
+
+BOOST_AUTO_TEST_CASE(test_target_raycast) {
 	Target target {
 		{0.0f, 0.0f, 120.0f},  // center
 		{0.5f, 0.0f, -1.0f},  // normal
 		{0.0f, 1.0f, 0.0f},  // up
 		120.0f};  // target base
 
-	sample(target, Vec2f(-128, -128), Vec2f(1, 1), Vec2i(256, 256));
+	auto color = target.cast_ray_color({ 0, 0, 0 }, {0, 0, 1}).value();
 
-	// auto color = target.cast_ray({0, 0, 0}, {0.1, 0.1, 1});
-
-	// std::cout << color.value() << "\n";
-
-	// Vec2f r;
-	// BOOST_CHECK(intersection(Line(Vec2f(0, 0), Vec2f(1, 0)),
-	// 	Line(Vec2f(0, 0), Vec2f(0, 1)), &r));
-	// BOOST_CHECK_SMALL(dist(r, Vec2f(0, 0)), 0.0001f);
-	// BOOST_CHECK(intersection(Line(Vec2f(444, 1025), Vec2f(549, -973)),
-	// 	Line(Vec2f(0, 0), Vec2f(0, 1)), &r));
-	// BOOST_CHECK_SMALL(dist(r, Vec2f(0, 0)), 0.0001f);
+	BOOST_CHECK_EQUAL(color[0], 0.0f);
+	BOOST_CHECK_EQUAL(color[1], 1.0f);
+	BOOST_CHECK_EQUAL(color[2], 1.0f);
 }
 
 BOOST_AUTO_TEST_CASE(test_mat_convert) {
@@ -89,3 +89,11 @@ BOOST_AUTO_TEST_CASE(test_mat_casting) {
 	BOOST_CHECK_EQUAL(mat_3u8_val[1], expected[1]);
 	BOOST_CHECK_EQUAL(mat_3u8_val[2], expected[2]);
 }
+
+/*
+Fitting Parameterized 3-D Models to Images
+http://www.ai.mit.edu/courses/6.899/papers/pami91.pdf
+
+3D Parametric Models
+https://cse291-i.github.io/WI18/LectureSlides/L10_Learning_for_parametric_models.pdf
+*/

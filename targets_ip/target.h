@@ -19,4 +19,8 @@ class Target {
 		const cv::Vec3f &direction) const;
 };
 
+double compute_metric(const cv::Mat &camera_image,
+		const Target &target,
+		const float focal_length);
+
 #endif  // _TARGET_H

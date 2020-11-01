@@ -20,6 +20,34 @@ cv::Mat load_data() {
 	return img;
 }
 
+BOOST_AUTO_TEST_CASE(test_target_model_derivatives) {
+	const cv::Vec3f center {10.0f, -10.0f, 120.0f};
+	const cv::Vec3f up {0.0f, 1.0f, 0.0f};
+	const cv::Vec3f normal {-0.1f, 0.0f, -1.0f};
+	const cv::Vec3f origin {0.0f, 0.0f, 0.0f};
+	const cv::Vec3f direction {0.1f, 0.1f, 1.0f};
+
+	auto t_dc0_analytic = plane_ray_intersection_2d_composed_dc(
+		center, up, normal,
+		origin, direction,
+		0);
+
+	float epsilon = 0.01;
+
+	auto t_dc0_p = plane_ray_intersection_2d_composed(
+		center + cv::Vec3f {epsilon, 0, 0}, up, normal,
+		origin, direction);
+
+	auto t_dc0_m = plane_ray_intersection_2d_composed(
+		center - cv::Vec3f {epsilon, 0, 0}, up, normal,
+		origin, direction);
+
+	auto t_dc0_numeric = (t_dc0_p - t_dc0_m) * (0.5 / epsilon);
+
+	std::cout << "t_dc0_analytic= " << t_dc0_analytic << "\n";
+	std::cout << "t_dc0_numeric= " << t_dc0_numeric << "\n";
+}
+
 BOOST_AUTO_TEST_CASE(test_target_model_metric) {
 	Target better_target_model {
 		{10.0f, -10.0f, 120.0f},  // center

@@ -38,4 +38,12 @@ cv::Vec2f plane_ray_intersection_2d_direct(
 	const cv::Vec3f &origin,
 	const cv::Vec3f &direction);
 
+cv::Vec2f plane_ray_intersection_2d_composed_dc(
+		const cv::Vec3f &center,
+		const cv::Vec3f &up,
+		const cv::Vec3f &normal,
+		const cv::Vec3f &origin,
+		const cv::Vec3f &direction,
+		const int dc);
+
 #endif  // _TARGET_H

@@ -17,6 +17,9 @@ class Target {
 		const cv::Vec3f &direction) const;
 	std::optional<uint64> cast_ray_section(const cv::Vec3f &origin,
 		const cv::Vec3f &direction) const;
+
+	std::optional<cv::Vec3f> get_target_point(const cv::Vec2f &point) const;
+
 };
 
 double compute_metric(

@@ -26,9 +26,9 @@ cv::Mat load_data() {
 
 struct Camera {
 	Matx33f m;
-	Camera(float object_distance, float screen_resolution, Vec2f shift) : m {
-		object_distance * screen_resolution, 0, shift[0],
-		0, object_distance * screen_resolution, shift[1],
+	Camera(float object_distance, float scale, Vec2f shift) : m {
+		object_distance * scale, 0, shift[0],
+		0, object_distance * scale, shift[1],
 		0, 0, 1} {
 	}
 };
@@ -37,30 +37,58 @@ struct ModelProjection {
 	Camera camera;
 	Target model;
 
-	Vec2f project_and_log(Vec2f model_coord) {
+	Vec2f project_and_log(Vec2f model_coord, bool log = false) {
 		Vec3f model_3d_coord = model.get_target_point(model_coord).value();
 
-		std::cout << "model_coord = " << model_coord << "\n";
-		std::cout << "model_3d_coord = " << model_3d_coord << "\n";
+		if (log) {
+			std::cout << "model_coord = " << model_coord << "\n";
+			std::cout << "model_3d_coord = " << model_3d_coord << "\n";
+		}
 
 		auto projected_coord = camera.m * model_3d_coord;
 		Vec2f projected_coord_2d {projected_coord[0] / projected_coord[2],
 			projected_coord[1] / projected_coord[2]};
-		std::cout << "projected_coord_2d = " << projected_coord_2d << "\n";
+		if (log) {
+			std::cout << "projected_coord_2d = " << projected_coord_2d << "\n";
+		}
 		return projected_coord_2d;
 	}
 };
 
+BOOST_AUTO_TEST_CASE(test_sample_modelspace_in_imagespace) {
+	auto camera_image = load_data();
 
+	Camera camera{240, 1,
+		{camera_image.cols / 2.0f, camera_image.rows / 2.0f}};
+	Target target_model{{0.0f, 0.0f, 240.0f},		 // center
+		cv::normalize(Vec3f{-1.0f, 0.0f, -1.0f}),	 // normal
+		cv::normalize(Vec3f{0.0f, 1.0f, 0.0f}),		 // up
+		120.0f};									 // target base
+	ModelProjection model_projection{camera, target_model};
+
+	for (float y = -1; y < 1; y += 0.1) {
+		for (float x = -1; x < 1; x += 0.1) {
+			auto image_coord = model_projection.project_and_log({x, y});
+			cv::drawMarker(camera_image,
+				cv::Point(image_coord[0], image_coord[1]),
+				cv::Scalar(0, 128, 0),
+				cv::MARKER_DIAMOND,
+				4);
+		}
+	}
+
+	imshow("opencv", camera_image);
+	cv::waitKey(0);
+}
 
 BOOST_AUTO_TEST_CASE(test_project_modelspace_to_imagespace) {
 	auto camera_image = load_data();
 
-	Target target_model{{0.0f, 0.0f, 240.0f},  // center
-		{-1.0f, 0.0f, -1.0f},				   // normal
-		{0.0f, 1.0f, 0.0f},					   // up
-		120.0f};							   // target base
-	Camera camera{240, 128,
+	Target target_model{{0.0f, 0.0f, 240.0f},		 // center
+		cv::normalize(Vec3f{-1.0f, 0.0f, -1.0f}),	 // normal
+		cv::normalize(Vec3f{0.0f, 1.0f, 0.0f}),		 // up
+		120.0f};									 // target base
+	Camera camera{240, 1,
 		{camera_image.cols / 2.0f, camera_image.rows / 2.0f}};
 	ModelProjection model_projection{camera, target_model};
 
@@ -68,37 +96,6 @@ BOOST_AUTO_TEST_CASE(test_project_modelspace_to_imagespace) {
 	model_projection.project_and_log({1, -1});
 	model_projection.project_and_log({1, 1});
 	model_projection.project_and_log({-1, 1});
-
-	for (float y = -1; y < 1; y += 0.1) {
-		for (float x = -1; x < 1; x += 0.1) {
-			auto image_coord = model_projection.project_and_log({x, y});
-			cv::drawMarker(camera_image,
-				cv::Point(image_coord[0], image_coord[1]),
-				cv::Scalar(0, 128, 0));
-		}
-	}
-
-	imshow("opencv", camera_image);
-	cv::waitKey(0);
-
-}
-
-BOOST_AUTO_TEST_CASE(test_target_model_metric) {
-	Target better_target_model{{10.0f, -10.0f, 120.0f},	 // center
-		{-0.1f, 0.0f, -1.0f},							 // normal
-		{0.0f, 1.0f, 0.0f},								 // up
-		120.0f};										 // target base
-
-	Target target_model{
-		{0.0f, 0.0f, 120.0f}, {0.0f, 0.0f, 0.0f}, {0.0f, 1.0f, 0.0f}, 120.0f};
-
-	auto camera_image = load_data();
-
-	// visualize_metric(camera_image, target_model, 180);
-
-	auto lower_metric = compute_metric(camera_image, better_target_model, 180);
-	auto higher_metric = compute_metric(camera_image, target_model, 180);
-	BOOST_CHECK(lower_metric < higher_metric);
 }
 
 BOOST_AUTO_TEST_CASE(test_target_raycast) {

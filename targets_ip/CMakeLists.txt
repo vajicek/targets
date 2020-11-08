@@ -26,10 +26,12 @@ SET(SRC main.cc
 	rectdetect.cc
 	preproc.cc
 	io.cc
+	opt.cc
 	target.cc
 	utils.cc)
 
 INCLUDE_DIRECTORIES(include)
+INCLUDE_DIRECTORIES(${OpenCV_INCLUDE_DIRS})
 INCLUDE_DIRECTORIES(${CMAKE_CURRENT_SOURCE_DIR})
 INCLUDE_DIRECTORIES(${CMAKE_CURRENT_SOURCE_DIR}/LBFGSpp/include)
 
@@ -55,5 +57,5 @@ FUNCTION(UNITTEST name test_src)
 ENDFUNCTION(UNITTEST)
 
 UNITTEST(utils "utils.cc;utils_test.cc")
-UNITTEST(target "target.cc;target_test.cc")
-UNITTEST(opt "opt_test.cc")
+UNITTEST(target "utils.cc;io.cc;preproc.cc;target.cc;opt.cc;target_test.cc")
+UNITTEST(opt "opt.cc;opt_test.cc")

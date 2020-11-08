@@ -4,36 +4,44 @@
 
 #include <optional>
 
-#include "opencv2/core/core.hpp"
+#include <opencv2/core/core.hpp>
 
 class Target {
- public:
+ private:
 	cv::Vec3f center;
+	float base;
+	cv::Matx33f rotation_matrix;
 	cv::Vec3f normal;
 	cv::Vec3f up;
-	float base;
+	cv::Vec3f binormal;
 
-	std::optional<cv::Vec3f> cast_ray_color(const cv::Vec3f &origin,
-		const cv::Vec3f &direction) const;
-	std::optional<uint64> cast_ray_section(const cv::Vec3f &origin,
-		const cv::Vec3f &direction) const;
+ public:
+	explicit Target(const cv::Vec3f &center, const cv::Vec3f &euler_angles, float base);
 
 	std::optional<cv::Vec3f> get_target_point(const cv::Vec2f &point) const;
-
+	std::optional<uint64> target_section(const cv::Vec2f &point) const;
+	std::optional<cv::Vec3f> target_color(const cv::Vec2f &point) const;
 };
 
-cv::Vec2f plane_ray_intersection_2d_composed(
-	const cv::Vec3f &center,
-	const cv::Vec3f &up,
-	const cv::Vec3f &normal,
-	const cv::Vec3f &origin,
-	const cv::Vec3f &direction);
+struct Camera {
+	cv::Matx33f projection_matrix;
+	Camera(float object_distance, float scale, cv::Vec2f shift);
+};
 
-cv::Vec2f plane_ray_intersection_2d_direct(
-	const cv::Vec3f &center,
-	const cv::Vec3f &up,
-	const cv::Vec3f &normal,
-	const cv::Vec3f &origin,
-	const cv::Vec3f &direction);
+struct ModelProjection {
+	Camera camera;
+	Target model;
 
-#endif  // _TARGET_H
+	cv::Vec2f project(cv::Vec2f model_coord) const;
+	cv::Vec2f project_and_log(cv::Vec2f model_coord, bool log = false) const;
+};
+
+struct SystemModel {
+	cv::Mat camera_image;
+
+	float value(const Target &target_model) const;
+};
+
+Target fit_target_model_to_image(cv::Mat *camera_image);
+
+#endif	 // TARGET_H

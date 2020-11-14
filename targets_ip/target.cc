@@ -29,8 +29,8 @@ const Vec3f MISS(1, 1, 1);
 const std::vector<Vec3f> COLORS{YELLOW, RED, BLUE, BLACK, WHITE, MISS};
 
 bool is_in_target(const Vec2f &coord, float base_2) {
-	return coord[0] > -base_2 && coord[0] < base_2 && coord[1] > -base_2 &&
-		   coord[1] < base_2;
+	return coord[0] >= -base_2 && coord[0] <= base_2 && coord[1] >= -base_2 &&
+		   coord[1] <= base_2;
 }
 
 Vec3f get_vec3f(const gsl_vector *v, int offset) {
@@ -110,23 +110,6 @@ Vec2f ModelProjection::project(Vec2f model_coord) const {
 		projected_coord[1] / projected_coord[2]};
 }
 
-Vec2f ModelProjection::project_and_log(Vec2f model_coord, bool log) const {
-	Vec3f model_3d_coord = model.get_target_point(model_coord).value();
-
-	if (log) {
-		std::cout << "model_coord = " << model_coord << "\n";
-		std::cout << "model_3d_coord = " << model_3d_coord << "\n";
-	}
-
-	auto projected_coord = camera.projection_matrix * model_3d_coord;
-	Vec2f projected_coord_2d{projected_coord[0] / projected_coord[2],
-		projected_coord[1] / projected_coord[2]};
-	if (log) {
-		std::cout << "projected_coord_2d = " << projected_coord_2d << "\n";
-	}
-	return projected_coord_2d;
-}
-
 //-----------------------------------------------------------------------------
 
 // clang-format off
@@ -140,32 +123,87 @@ Camera::Camera(float object_distance, float scale, Vec2f shift)
 
 //-----------------------------------------------------------------------------
 
-float SystemModel::value(const Target &target_model) const {
-	const Vec2f shift{camera_image.cols / 2.0f, camera_image.rows / 2.0f};
-	const Camera camera{26, 10, shift};
-	const ModelProjection model_projection{camera, target_model};
+std::optional<Vec3f> img_color(const Mat &camera_image,
+	const ModelProjection &model_projection,
+	const Vec2f &model_coord) {
+	auto image_coord = model_projection.project(model_coord);
+	auto int_coord = Vec2i(image_coord[1], image_coord[0]);
+	if (int_coord[0] < 0 || int_coord[1] >= camera_image.cols ||
+		int_coord[1] < 0 || int_coord[0] >= camera_image.rows) {
+		return std::nullopt;
+	}
+	auto image_color = camera_image.at<Vec3b>(int_coord);
+	return std::optional(Vec3f(image_color) / 255.0f);
+}
+
+float dota(const std::optional<Vec3f> &v) {
+	if (v.has_value()) {
+		return v.value().dot(v.value());
+	}
+	return 0;
+}
+
+float sample_model_edges(const Mat &camera_image, const ModelProjection &model_projection) {
+	const float section_width = 1.0 / 5;
 	float total_sample_fit_cost = 0.0f;
 	int sample_count = 0;
-	for (float y = -1; y < 1; y += 0.005) {
-		for (float x = -1; x < 1; x += 0.005) {
-			auto target_model_color =
-				model_projection.model.target_color({x, y}).value_or(
-					Vec3f{1, 1, 1});
-			auto image_coord = model_projection.project({x, y});
-			auto int_coord = Vec2i(image_coord[1], image_coord[0]);
-			if (int_coord[0] < 0 || int_coord[1] >= camera_image.cols ||
-				int_coord[1] < 0 || int_coord[0] >= camera_image.rows) {
+	for (float t = 0; t < 1; t += 0.01) {
+		total_sample_fit_cost += dota(img_color(camera_image, model_projection, Vec2f{t, 0}));
+		total_sample_fit_cost += dota(img_color(camera_image, model_projection, Vec2f{t, 1}));
+		total_sample_fit_cost += dota(img_color(camera_image, model_projection, Vec2f{0, t}));
+		total_sample_fit_cost += dota(img_color(camera_image, model_projection, Vec2f{1, t}));
+		sample_count += 4;
+
+		Vec2f direction {cosf(t * 2 * M_PI), sinf(t * 2 * M_PI)};
+		for (int circle = 0; circle < 4; circle ++) {
+			const double circle_radius = (circle + 1) * section_width;
+			const Vec2f circle_point {direction * circle_radius};
+			total_sample_fit_cost += dota(img_color(camera_image, model_projection, circle_point));
+		}
+		sample_count += 4;
+	}
+	return total_sample_fit_cost / sample_count;
+}
+
+float sample_model_area_error(const Mat &camera_image, const ModelProjection &model_projection) {
+	float total_sample_fit_cost = 0.0f;
+	int sample_count = 0;
+	for (float y = -1; y <= 1; y += 0.01) {
+		for (float x = -1; x <= 1; x += 0.01) {
+			const Vec2f model_coord {x, y};
+			auto target_model_color = model_projection.model.target_color(model_coord);
+			auto image_color_float = img_color(camera_image, model_projection, model_coord);
+			if (!image_color_float.has_value() || !target_model_color.has_value()) {
+				std::cout << "should not happen " << model_coord
+					<< " " << image_color_float.has_value()
+					<< " " << target_model_color.has_value() << "\n";
 				total_sample_fit_cost += 3;
-				continue;
+			} else {
+				auto diff = image_color_float.value() - target_model_color.value();
+				// std::cout << model_coord << " -> "
+				// 	<< image_color_float.value() << ","
+				// 	<< target_model_color.value() << "\n";
+				total_sample_fit_cost += diff.dot(diff);
 			}
-			auto image_color = camera_image.at<Vec3b>(int_coord);
-			auto image_color_float = Vec3f(image_color) / 255.0f;
-			auto diff = image_color_float - target_model_color;
-			total_sample_fit_cost += diff.dot(diff);
 			sample_count++;
 		}
 	}
 	return total_sample_fit_cost / sample_count;
+}
+
+float SystemModel::value(const Target &target_model) const {
+	const Vec2f shift{camera_image.cols / 2.0f, camera_image.rows / 2.0f};
+	const Camera camera{26, 10, shift};
+	const ModelProjection model_projection{camera, target_model};
+
+	float edge_cost = sample_model_edges(camera_image_edges, model_projection);
+	float area_error_cost = sample_model_area_error(camera_image, model_projection);
+
+	std::cout
+		<< "area_error_cost = " << area_error_cost
+		<< " edge_cost = " << edge_cost << "\n";
+
+	return area_error_cost - 1.0*edge_cost;
 }
 
 double target_model_fit_cost(const gsl_vector *v, void *params) {
@@ -173,9 +211,27 @@ double target_model_fit_cost(const gsl_vector *v, void *params) {
 	return model.value(Target{get_vec3f(v, 0), get_vec3f(v, 3), 120.0f});
 }
 
-Target fit_target_model_to_image(Mat *camera_image) {
-	cv::blur(*camera_image, *camera_image, cv::Size(10, 10));
-	SystemModel model{*camera_image};
+Target fit_target_model_to_image(const Mat &camera_image) {
+	cv::Mat camera_image_edges;
+	cv::Mat blurred_camera_image = camera_image.clone();
+
+	imshow("opencv", camera_image);
+	cv::waitKey(0);
+
+
+	cv::blur(blurred_camera_image, blurred_camera_image, cv::Size(5, 5));
+	imshow("opencv", blurred_camera_image);
+	cv::waitKey(0);
+
+	cv::Canny(camera_image, camera_image_edges, 150, 400, 3, true);
+	imshow("opencv", camera_image_edges);
+	cv::waitKey(0);
+
+	cv::blur(camera_image_edges, camera_image_edges, cv::Size(8, 8));
+	imshow("opencv", camera_image_edges);
+	cv::waitKey(0);
+
+	SystemModel model{blurred_camera_image, camera_image_edges};
 
 	std::vector<double> result;
 

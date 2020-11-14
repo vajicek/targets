@@ -47,6 +47,22 @@ void show(Mat *camera_image, const ModelProjection &model_projection) {
 		}
 	}
 
+	const float section_width = 1.0 / 5;
+
+	for (float t = 0; t < 1; t += 0.01) {
+		Vec2f direction {cosf(t * 2 * M_PI), sinf(t * 2 * M_PI)};
+		for (int circle = 0; circle < 4; circle++) {
+			const double circle_radius = (circle + 1) * section_width;
+			const Vec2f circle_point {direction * circle_radius};
+			auto image_coord = model_projection.project(circle_point);
+			cv::circle(*camera_image,
+				cv::Point(image_coord[0], image_coord[1]),
+				2,
+				cv::Scalar(0, 255, 0),
+				-1);
+		}
+	}
+
 	imshow("opencv", *camera_image);
 	cv::waitKey(0);
 }
@@ -56,7 +72,7 @@ BOOST_AUTO_TEST_CASE(test_optimize_model
 ) {
 	auto camera_image = load_data();
 
-	Target target = fit_target_model_to_image(&camera_image);
+	Target target = fit_target_model_to_image(camera_image);
 	Camera camera{26, 10, {camera_image.cols / 2.0f, camera_image.rows / 2.0f}};
 	ModelProjection model_projection{camera, target};
 
@@ -64,7 +80,7 @@ BOOST_AUTO_TEST_CASE(test_optimize_model
 }
 
 BOOST_AUTO_TEST_CASE(test_blur_input
-//	, *boost::unit_test::disabled()
+	, *boost::unit_test::disabled()
 ) {
 	auto camera_image = load_data();
 	//cv::blur(camera_image, camera_image, cv::Size(8, 8));
@@ -75,6 +91,12 @@ BOOST_AUTO_TEST_CASE(test_blur_input
 	//cv::imshow("opencv", camera_image);
 	cv::imshow("opencv", a);
 	cv::waitKey(0);
+}
+
+BOOST_AUTO_TEST_CASE(test_masking
+	, *boost::unit_test::disabled()
+) {
+	auto camera_image = load_data();
 }
 
 BOOST_AUTO_TEST_CASE(
@@ -99,11 +121,6 @@ BOOST_AUTO_TEST_CASE(test_project_modelspace_to_imagespace) {
 		Vec3f{0.0f, 0.0f, 240.0f}, Vec3f{0.0f, 0.0f, 0.0f}, 120.0f};
 	Camera camera{240, 1, {camera_image.cols / 2.0f, camera_image.rows / 2.0f}};
 	ModelProjection model_projection{camera, target_model};
-
-	model_projection.project_and_log({-1, -1});
-	model_projection.project_and_log({1, -1});
-	model_projection.project_and_log({1, 1});
-	model_projection.project_and_log({-1, 1});
 }
 
 BOOST_AUTO_TEST_CASE(test_mat_convert) {

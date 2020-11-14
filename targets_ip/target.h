@@ -33,15 +33,15 @@ struct ModelProjection {
 	Target model;
 
 	cv::Vec2f project(cv::Vec2f model_coord) const;
-	cv::Vec2f project_and_log(cv::Vec2f model_coord, bool log = false) const;
 };
 
 struct SystemModel {
 	cv::Mat camera_image;
+	cv::Mat camera_image_edges;
 
 	float value(const Target &target_model) const;
 };
 
-Target fit_target_model_to_image(cv::Mat *camera_image);
+Target fit_target_model_to_image(const cv::Mat &camera_image);
 
 #endif	 // TARGET_H

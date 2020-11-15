@@ -57,5 +57,6 @@ FUNCTION(UNITTEST name test_src)
 ENDFUNCTION(UNITTEST)
 
 UNITTEST(utils "utils.cc;utils_test.cc")
-UNITTEST(target "utils.cc;io.cc;preproc.cc;target.cc;opt.cc;target_test.cc")
 UNITTEST(opt "opt.cc;opt_test.cc")
+UNITTEST(target_model "utils.cc;io.cc;preproc.cc;target_model.cc;opt.cc;target_model_test.cc")
+UNITTEST(target "utils.cc;io.cc;preproc.cc;target.cc;target_test.cc")

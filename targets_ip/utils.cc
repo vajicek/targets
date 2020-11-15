@@ -1,6 +1,8 @@
 #include <utils.h>
 #include <iostream>
 
+#include <opencv2/highgui/highgui.hpp>
+
 using cv::Vec2f;
 using cv::Point2f;
 using cv::Point;
@@ -66,4 +68,40 @@ Line createLineFromSlope(cv::Vec2f slope_line) {
 float cosAngleLines(Line a, Line b) {
 	Point2f d1 = Point2f(normalize(a.a_ - a.b_));
 	return Point2f(normalize(b.a_ - b.b_)).dot(d1);
+}
+
+void sameAs(cv::Mat *target, const cv::Mat &source) {
+	target->create(source.rows, source.cols, source.type());
+}
+
+void zeroSameAs(cv::Mat *target, const cv::Mat &source) {
+	sameAs(target, source);
+	(*target) *= 0;
+}
+
+void showStack(std::vector<cv::Mat*> input_images, size_t cols) {
+	int rows = (input_images.size() + cols - 1) / cols;
+
+	std::vector<cv::Mat> row_mats;
+	for (size_t i = 0; i < rows; i++) {
+		std::vector<cv::Mat> col_mats;
+		for(size_t j = 0; j < cols; j++) {
+			auto index = i * cols + j;
+			if (index >= input_images.size()) {
+				cv::Mat mat;
+				sameAs(&mat, *input_images[0]);
+				col_mats.push_back(mat);
+			} else {
+				col_mats.push_back(*input_images[index]);
+			}
+		}
+		cv::Mat row_mat;
+		cv::hconcat(col_mats.data(), col_mats.size(), row_mat);
+		row_mats.push_back(row_mat);
+	}
+	cv::Mat result;
+	cv::vconcat(row_mats.data(), row_mats.size(), result);
+
+	cv::imshow("opencv", result);
+	cv::waitKey(0);
 }

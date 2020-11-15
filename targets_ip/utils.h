@@ -39,4 +39,11 @@ auto std_dev(G element_getter, size_t len) {
 	return sqrt(var_val);
 }
 
+void sameAs(cv::Mat *target, const cv::Mat &source);
+
+void zeroSameAs(cv::Mat *target, const cv::Mat &source);
+
+void showStack(std::vector<cv::Mat*> input_images, size_t cols);
+
+
 #endif

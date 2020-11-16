@@ -33,7 +33,14 @@ Mat load_data() {
 	return img;
 }
 
-BOOST_AUTO_TEST_CASE(test_interactive_threshold/*, *disabled()*/) {
+BOOST_AUTO_TEST_CASE(test_ordering_by_direction/*, *disabled()*/) {
+	BOOST_CHECK(vector2Angle({1, -1}) > vector2Angle({1, 1}));			// 01:30
+	BOOST_CHECK(vector2Angle({1, 1}) > vector2Angle({-1, 1}));			// 04:30
+	BOOST_CHECK(vector2Angle({-1, 1}) > vector2Angle({-1, -1}));		// 07:30
+	BOOST_CHECK(vector2Angle({1, -1}) > vector2Angle({-1, -1}));		// 10:30
+}
+
+BOOST_AUTO_TEST_CASE(test_interactive_threshold, *disabled()) {
 	cv::namedWindow("opencv", 1);
 
 	int threshold = 240;

@@ -2,15 +2,16 @@
 
 #include <algorithm>
 #include <iostream>
-#include <vector>
 #include <string>
+#include <vector>
 
-#include <opencv2/imgproc.hpp>
 #include <opencv2/highgui/highgui.hpp>
+#include <opencv2/imgproc.hpp>
 
 #include "utils.h"
 
-void loadAndPreprocessInput(TargetExtractorData *data, const std::string &filename) {
+void loadAndPreprocessInput(TargetExtractorData *data,
+	const std::string &filename) {
 	data->img = imread(filename, cv::IMREAD_COLOR);
 
 	cv::resize(data->img, data->img_resized,
@@ -22,31 +23,33 @@ void loadAndPreprocessInput(TargetExtractorData *data, const std::string &filena
 	cv::split(imgHSV, data->hsv);
 }
 
-double ang(cv::Point2f a) {
-	return atan2(a.x, a.y);
+double vector2Angle(cv::Point2f a) { return atan2(a.x, a.y); }
+
+double pointCenter2Angle(cv::Point2f a, cv::Point2f center) {
+	return atan2(a.x - center.x, a.y - center.y);
 }
 
-void warpPolygon(TargetExtractorData *data, const std::vector<cv::Point> &poly) {
+void warpPolygonToSquare(TargetExtractorData *data,
+	const std::vector<cv::Point> &poly) {
 	if (poly.size() != 4) {
 		return;
 	}
-	std::vector<cv::Point2f> source {
-		cv::Point2f {poly[0]}, cv::Point2f {poly[1]},
-		cv::Point2f {poly[2]}, cv::Point2f {poly[3]}};
+	std::vector<cv::Point2f> source{
+		cv::Point2f{poly[0]}, cv::Point2f{poly[1]},
+		cv::Point2f{poly[2]}, cv::Point2f{poly[3]}};
 
 	cv::Point2f center = (source[0] + source[1] + source[2] + source[3]) / 4;
 
-	std::sort(std::begin(source), std::end(source),
-		[center](auto a, auto b) { return ang(a - center) > ang(b - center); });
+	std::sort(std::begin(source), std::end(source), [center](auto a, auto b) {
+		return pointCenter2Angle(a, center) > pointCenter2Angle(b, center);
+	});
 
-	cv::Mat warp_mat = cv::getPerspectiveTransform(
-		source,
-		std::vector<cv::Point2f> {
-			cv::Point2i {data->target_size.width, 0},
-			cv::Point2i {data->target_size.width, data->target_size.height},
-			cv::Point2i {0, data->target_size.height},
-			cv::Point2i {0, 0}
-		});
+	cv::Mat warp_mat = cv::getPerspectiveTransform(source,
+		std::vector<cv::Point2f>{
+			cv::Point2i{data->target_size.width, 0},
+			cv::Point2i{data->target_size.width, data->target_size.height},
+			cv::Point2i{0, data->target_size.height},
+			cv::Point2i{0, 0}});
 	cv::warpPerspective(data->hsv[2], data->warped, warp_mat, data->target_size,
 		cv::INTER_LINEAR, cv::BORDER_CONSTANT, cv::Scalar());
 }
@@ -84,7 +87,7 @@ void extractTargetFace(TargetExtractorData *data,
 	zeroSameAs(&data->poly_drawing, data->thresholded);
 	cv::polylines(data->poly_drawing, {poly}, true, cv::Scalar(255, 255, 255));
 
-	warpPolygon(data, poly);
+	warpPolygonToSquare(data, poly);
 }
 
 void detectArrows(TargetExtractorData *data,

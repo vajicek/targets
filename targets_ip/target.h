@@ -35,4 +35,8 @@ void extractTargetFace(TargetExtractorData *data,
 void detectArrows(TargetExtractorData *data,
 	int canny1, int canny2, int hough);
 
+// Direction to angle in 2D. Clockwise decreasing from
+// maximum at 00:00 to minimum at 11:59.
+double vector2Angle(cv::Point2f a);
+
 #endif	 // TARGET_H

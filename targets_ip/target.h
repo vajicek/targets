@@ -8,7 +8,7 @@
 
 struct TargetExtractorData {
 	cv::Mat img;
-	cv::Mat imgResized;
+	cv::Mat img_resized;
 	cv::Mat hsv[3];
 	cv::Mat warped;
 	cv::Mat warped_edges;

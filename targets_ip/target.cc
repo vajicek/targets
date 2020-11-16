@@ -13,11 +13,11 @@
 void loadAndPreprocessInput(TargetExtractorData *data, const std::string &filename) {
 	data->img = imread(filename, cv::IMREAD_COLOR);
 
-	cv::resize(data->img, data->imgResized,
+	cv::resize(data->img, data->img_resized,
 		getSizeKeepRatio(data->img, 0, data->scaled_input_size));
 
 	cv::Mat imgHSV;
-	cv::cvtColor(data->imgResized, imgHSV, cv::COLOR_BGR2HSV);
+	cv::cvtColor(data->img_resized, imgHSV, cv::COLOR_BGR2HSV);
 
 	cv::split(imgHSV, data->hsv);
 }

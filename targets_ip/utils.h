@@ -43,7 +43,10 @@ void sameAs(cv::Mat *target, const cv::Mat &source);
 
 void zeroSameAs(cv::Mat *target, const cv::Mat &source);
 
-void showStack(std::vector<cv::Mat*> input_images, size_t cols);
+void showStack(std::vector<cv::Mat*> input_images, size_t cols, bool wait = true);
 
+cv::Size2i getSizeKeepRatio(const cv::Mat &s, const int width, const int height);
+
+void drawLineByAngleOffset(cv::Mat* m, float angle, float shift);
 
 #endif

@@ -1,7 +1,9 @@
 #include <utils.h>
 #include <iostream>
+#include <algorithm>
 
 #include <opencv2/highgui/highgui.hpp>
+#include <opencv2/imgproc.hpp>
 
 using cv::Vec2f;
 using cv::Point2f;
@@ -79,7 +81,7 @@ void zeroSameAs(cv::Mat *target, const cv::Mat &source) {
 	(*target) *= 0;
 }
 
-void showStack(std::vector<cv::Mat*> input_images, size_t cols) {
+void showStack(std::vector<cv::Mat*> input_images, size_t cols, bool wait) {
 	int rows = (input_images.size() + cols - 1) / cols;
 
 	std::vector<cv::Mat> row_mats;
@@ -87,7 +89,7 @@ void showStack(std::vector<cv::Mat*> input_images, size_t cols) {
 		std::vector<cv::Mat> col_mats;
 		for(size_t j = 0; j < cols; j++) {
 			auto index = i * cols + j;
-			if (index >= input_images.size()) {
+			if (index >= input_images.size() || input_images[index]->rows == 0) {
 				cv::Mat mat;
 				sameAs(&mat, *input_images[0]);
 				col_mats.push_back(mat);
@@ -103,5 +105,28 @@ void showStack(std::vector<cv::Mat*> input_images, size_t cols) {
 	cv::vconcat(row_mats.data(), row_mats.size(), result);
 
 	cv::imshow("opencv", result);
-	cv::waitKey(0);
+	if (wait) {
+		cv::waitKey(0);
+	}
+}
+
+cv::Size2i getSizeKeepRatio(const cv::Mat &s, const int width, const int height) {
+	if (width) {
+		auto new_height = static_cast<int>(width * s.rows / static_cast<double>(s.cols));
+		return cv::Size2i(width, new_height);
+	} else if (height) {
+		auto new_width = static_cast<int>(height * s.cols / static_cast<double>(s.rows));
+		return cv::Size2i(new_width, height);
+	}
+	return cv::Size2i(s.rows, s.cols);
+}
+
+void drawLineByAngleOffset(cv::Mat* m, float angle, float offset) {
+	Vec2f dir {-std::sin(angle), std::cos(angle)};
+	Vec2f ortho_dir {dir[1], -dir[0]};
+	Vec2f p0 = ortho_dir * offset;
+	auto max_len = std::max(m->rows, m->cols);
+	Vec2f pt1 = p0 + max_len * dir;
+	Vec2f pt2 = p0 - max_len * dir;
+	cv::line(*m, cv::Point2i {pt1}, cv::Point2i {pt2}, cv::Scalar(255, 255, 255), 1, cv::LINE_AA);
 }

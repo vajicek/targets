@@ -29,14 +29,13 @@ double pointCenter2Angle(cv::Point2f a, cv::Point2f center) {
 	return atan2(a.x - center.x, a.y - center.y);
 }
 
-void warpPolygonToSquare(TargetExtractorData *data,
-	const std::vector<cv::Point> &poly) {
-	if (poly.size() != 4) {
+void warpPolygonToSquare(TargetExtractorData *data) {
+	if (data->poly.size() != 4) {
 		return;
 	}
 	std::vector<cv::Point2f> source{
-		cv::Point2f{poly[0]}, cv::Point2f{poly[1]},
-		cv::Point2f{poly[2]}, cv::Point2f{poly[3]}};
+		cv::Point2f{data->poly[0]}, cv::Point2f{data->poly[1]},
+		cv::Point2f{data->poly[2]}, cv::Point2f{data->poly[3]}};
 
 	cv::Point2f center = (source[0] + source[1] + source[2] + source[3]) / 4;
 
@@ -81,13 +80,12 @@ void extractTargetFace(TargetExtractorData *data,
 	zeroSameAs(&data->curve_drawing, data->thresholded);
 	cv::drawContours(data->curve_drawing, contours, 0, cv::Scalar(255, 255, 255));
 
-	std::vector<cv::Point> poly;
-	cv::approxPolyDP(contours[0], poly, 30.0, true);
+	cv::approxPolyDP(contours[0], data->poly, 30.0, true);
 
 	zeroSameAs(&data->poly_drawing, data->thresholded);
-	cv::polylines(data->poly_drawing, {poly}, true, cv::Scalar(255, 255, 255));
+	cv::polylines(data->poly_drawing, {data->poly}, true, cv::Scalar(255, 255, 255));
 
-	warpPolygonToSquare(data, poly);
+	warpPolygonToSquare(data);
 }
 
 void detectArrows(TargetExtractorData *data,

@@ -3,6 +3,7 @@
 #pragma once
 
 #include <string>
+#include <vector>
 
 #include <opencv2/core/core.hpp>
 
@@ -16,6 +17,7 @@ struct TargetExtractorData {
 	cv::Mat dilated;
 	cv::Mat curve_drawing;
 	cv::Mat poly_drawing;
+	std::vector<cv::Point> poly;
 
 	cv::Mat warped;
 	cv::Mat warped_edges;

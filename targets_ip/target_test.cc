@@ -7,37 +7,47 @@
 #define BOOST_TEST_DYN_LINK
 #define BOOST_TEST_MODULE TargetTest
 
-#include "opt.h"
-#include "preproc.h"
-#include "target.h"
-#include "utils.h"
-
 #include <boost/test/unit_test.hpp>
 
 #include <opencv2/core/core.hpp>
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/imgproc.hpp>
 
-using cv::Mat;
-using cv::Matx33f;
-using cv::Vec2f;
-using cv::Vec2i;
-using cv::Vec3b;
-using cv::Vec3f;
+#include "target.h"
+#include "utils.h"
+
 using boost::unit_test::disabled;
 
-Mat load_data() {
-	Mat img = imread(
-		"/home/vajicek/src/targets/targets_ip/testdata/img0001.jpg",
-		cv::IMREAD_COLOR);
-	return img;
-}
+const char *target_image_0001 = "../testdata/img0001.jpg";
 
-BOOST_AUTO_TEST_CASE(test_ordering_by_direction/*, *disabled()*/) {
+BOOST_AUTO_TEST_CASE(test_ordering_by_direction) {
 	BOOST_CHECK(vector2Angle({1, -1}) > vector2Angle({1, 1}));			// 01:30
 	BOOST_CHECK(vector2Angle({1, 1}) > vector2Angle({-1, 1}));			// 04:30
 	BOOST_CHECK(vector2Angle({-1, 1}) > vector2Angle({-1, -1}));		// 07:30
 	BOOST_CHECK(vector2Angle({1, -1}) > vector2Angle({-1, -1}));		// 10:30
+}
+
+BOOST_AUTO_TEST_CASE(test_detect_and_warp_target) {
+	const cv::Size target_size(256, 256);
+	const int scaled_input_size = 256;
+
+	const int smoothing = 3;
+	const int dilate = 3;
+	const int threshold = 240;
+
+	const int canny1 = 50;
+	const int canny2 = 200;
+	const int hough = 50;
+
+	TargetExtractorData data(target_size, scaled_input_size);
+	loadAndPreprocessInput(&data, target_image_0001);
+	extractTargetFace(&data, smoothing, dilate, threshold);
+	detectArrows(&data, canny1, canny2, hough);
+
+	BOOST_CHECK_EQUAL(data.poly[0], cv::Point(137, 64));
+	BOOST_CHECK_EQUAL(data.poly[1], cv::Point(32, 68));
+	BOOST_CHECK_EQUAL(data.poly[2], cv::Point(33, 165));
+	BOOST_CHECK_EQUAL(data.poly[3], cv::Point(130, 175));
 }
 
 BOOST_AUTO_TEST_CASE(test_interactive_threshold, *disabled()) {
@@ -63,7 +73,7 @@ BOOST_AUTO_TEST_CASE(test_interactive_threshold, *disabled()) {
 
 	TargetExtractorData data(cv::Size(512, 512), 512);
 
-	loadAndPreprocessInput(&data, "/home/vajicek/src/targets/targets_ip/testdata/img0001.jpg");
+	loadAndPreprocessInput(&data, target_image_0001);
 
 	while (true) {
 		extractTargetFace(&data, smoothing, dilate, threshold);
@@ -82,7 +92,7 @@ BOOST_AUTO_TEST_CASE(test_interactive_threshold, *disabled()) {
 }
 
 BOOST_AUTO_TEST_CASE(test_ip_pipeline, *disabled()) {
-	auto img = load_data();
+	auto img = imread(target_image_0001, cv::IMREAD_COLOR);
 
 	cv::Mat imgResized;
 	cv::resize(img, imgResized, getSizeKeepRatio(img, 0, 512));

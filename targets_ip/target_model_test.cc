@@ -6,15 +6,14 @@
 #define BOOST_TEST_DYN_LINK
 #define BOOST_TEST_MODULE TargetTest
 
-#include "opt.h"
-#include "preproc.h"
-#include "target_model.h"
-#include "utils.h"
-
 #include <boost/test/unit_test.hpp>
 #include <opencv2/core/core.hpp>
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/imgproc.hpp>
+
+#include "opt.h"
+#include "target_model.h"
+#include "utils.h"
 
 using cv::Mat;
 using cv::Matx33f;

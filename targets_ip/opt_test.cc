@@ -7,9 +7,9 @@
 #define BOOST_TEST_DYN_LINK
 #define BOOST_TEST_MODULE OptTest
 
-#include "opt.h"
-
 #include <boost/test/unit_test.hpp>
+
+#include "opt.h"
 
 using Eigen::VectorXd;
 using LBFGSpp::LBFGSParam;

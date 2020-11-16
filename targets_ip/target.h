@@ -10,15 +10,16 @@ struct TargetExtractorData {
 	cv::Mat img;
 	cv::Mat img_resized;
 	cv::Mat hsv[3];
-	cv::Mat warped;
-	cv::Mat warped_edges;
-	cv::Mat lines_drawing;
 
 	cv::Mat smoothed;
 	cv::Mat thresholded;
 	cv::Mat dilated;
 	cv::Mat curve_drawing;
 	cv::Mat poly_drawing;
+
+	cv::Mat warped;
+	cv::Mat warped_edges;
+	cv::Mat lines_drawing;
 
 	cv::Size target_size;
 	int scaled_input_size;

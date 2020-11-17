@@ -3,7 +3,7 @@ CMAKE_MINIMUM_REQUIRED(VERSION 3.0)
 PROJECT(targets_ip)
 
 # DEPENDENCIES
-FIND_PACKAGE(Boost 1.36.0 COMPONENTS unit_test_framework date_time filesystem system)
+FIND_PACKAGE(Boost 1.36.0 COMPONENTS unit_test_framework date_time filesystem system program_options)
 IF(Boost_FOUND)
 	INCLUDE_DIRECTORIES(${Boost_INCLUDE_DIRS})
 ENDIF()

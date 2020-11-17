@@ -8,11 +8,12 @@
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/imgproc.hpp>
 
+#include "io.h"
 #include "utils.h"
 
 void loadAndPreprocessInput(TargetExtractorData *data,
 	const std::string &filename) {
-	data->img = imread(filename, cv::IMREAD_COLOR);
+	data->img = loadImage(filename);
 
 	cv::resize(data->img, data->img_resized,
 		getSizeKeepRatio(data->img, 0, data->scaled_input_size));

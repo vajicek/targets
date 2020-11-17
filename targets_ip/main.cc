@@ -3,6 +3,7 @@
 #include <functional>
 
 #include <opencv2/core/core.hpp>
+#include <opencv2/highgui/highgui.hpp>
 
 #include <boost/program_options.hpp>
 
@@ -35,8 +36,8 @@ Action stringToAction(std::string action_str) {
 	return Action::NONE;
 }
 
-void configure_operations(Operations* operations,
-	const po::variables_map &variables_map) {
+void configureOperations(
+	Operations *operations, const po::variables_map &variables_map) {
 	if (variables_map.count("input")) {
 		operations->input_file = variables_map["input"].as<std::string>();
 	}
@@ -54,7 +55,7 @@ void configure_operations(Operations* operations,
 	}
 }
 
-void setup_operations_from_arguments(Operations* operations, int argc, char** argv) {
+void setupOperationsFromArguments(Operations* operations, int argc, char** argv) {
 	po::options_description options_description("Allowed options");
 	options_description.add_options()
 		("help", "produce help message")
@@ -68,7 +69,7 @@ void setup_operations_from_arguments(Operations* operations, int argc, char** ar
 	po::store(parsed_options, variables_map);
 	po::notify(variables_map);
 
-	configure_operations(operations, variables_map);
+	configureOperations(operations, variables_map);
 
 	if (operations->action == Action::NONE || operations->action == Action::HELP) {
 		std::cout << options_description << "\n";
@@ -76,7 +77,7 @@ void setup_operations_from_arguments(Operations* operations, int argc, char** ar
 	}
 }
 
-void extract_target(Operations* operations) {
+void extractTarget(Operations* operations) {
 	const cv::Size target_size(256, 256);
 	const int scaled_input_size = 256;
 
@@ -91,11 +92,35 @@ void extract_target(Operations* operations) {
 }
 
 void stream(Operations* operations) {
+	const cv::Size target_size(256, 256);
+	const int scaled_input_size = 256;
+	TargetExtractorData data(target_size, scaled_input_size);
+
+	captureCameraImage("/dev/video0", &data.img,
+		[&data](const cv::Mat &frame) {
+			const int smoothing = 3;
+			const int dilate = 3;
+			const int threshold = 200;
+
+			preprocessInput(&data);
+			extractTargetFace(&data, smoothing, dilate, threshold);
+
+			if (data.poly.size() == 4) {
+				cv::imshow("opencv", data.warped);
+			} else {
+				showStack({&data.hsv[2],
+					&data.smoothed,
+					&data.thresholded,
+					&data.dilated,
+					&data.curve_drawing,
+					&data.poly_drawing}, 3, false);
+			}
+		});
 }
 
-void run_operations(Operations *operations) {
+void runOperations(Operations *operations) {
 	std::map<Action, std::function<void(Operations*)>> actions_map {
-		{Action::EXTRACT_TARGET, extract_target},
+		{Action::EXTRACT_TARGET, extractTarget},
 		{Action::STREAM, stream}
 	};
 	actions_map[operations->action](operations);
@@ -103,7 +128,7 @@ void run_operations(Operations *operations) {
 
 int main(int argc, char** argv) {
 	Operations operations;
-	setup_operations_from_arguments(&operations, argc, argv);
-	run_operations(&operations);
+	setupOperationsFromArguments(&operations, argc, argv);
+	runOperations(&operations);
 	return 0;
 }

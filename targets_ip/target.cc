@@ -14,7 +14,10 @@
 void loadAndPreprocessInput(TargetExtractorData *data,
 	const std::string &filename) {
 	data->img = loadImage(filename);
+	preprocessInput(data);
+}
 
+void preprocessInput(TargetExtractorData *data) {
 	cv::resize(data->img, data->img_resized,
 		getSizeKeepRatio(data->img, 0, data->scaled_input_size));
 
@@ -51,7 +54,7 @@ void warpPolygonToSquare(TargetExtractorData *data) {
 			cv::Point2i{0, data->target_size.height},
 			cv::Point2i{0, 0}});
 	cv::warpPerspective(data->hsv[2], data->warped, warp_mat, data->target_size,
-		cv::INTER_LINEAR, cv::BORDER_CONSTANT, cv::Scalar());
+		cv::INTER_CUBIC, cv::BORDER_CONSTANT, cv::Scalar());
 }
 
 void extractTargetFace(TargetExtractorData *data,
@@ -77,6 +80,10 @@ void extractTargetFace(TargetExtractorData *data,
 
 	std::sort(std::begin(contours), std::end(contours),
 		[](auto a, auto b) { return cv::contourArea(a) > cv::contourArea(b); });
+
+	if (contours.size() == 0) {
+		return;
+	}
 
 	zeroSameAs(&data->curve_drawing, data->thresholded);
 	cv::drawContours(data->curve_drawing, contours, 0, cv::Scalar(255, 255, 255));

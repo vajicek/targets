@@ -79,11 +79,14 @@ BOOST_AUTO_TEST_CASE(test_interactive_threshold, *disabled()) {
 		extractTargetFace(&data, smoothing, dilate, threshold);
 		detectArrows(&data, canny1, canny2, hough);
 
-		showStack({&data.warped, &data.warped_edges, &data.lines_drawing}, 3, false);
+		// showStack({&data.warped, &data.warped_edges, &data.lines_drawing}, 3, false);
 
-		// showStack({&data.hsv[2], &data.smoothed, &data.thresholded,
-		// 	&data.dilated, &data.curve_drawing, &data.poly_drawing,
-		// 	&data.warped, &data.warped_edges, &data.lines_drawing}, 3, false);
+		showStack({&data.hsv[2],
+			&data.smoothed,
+			&data.thresholded,
+			&data.dilated,
+			&data.curve_drawing,
+			&data.poly_drawing}, 3, false);
 
 		if (cv::waitKey(100) == 27) {
 			break;

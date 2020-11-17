@@ -3,7 +3,15 @@
 #pragma once
 
 #include <string>
+#include <functional>
 
-void captureCameraImage(std::string source);
+#include <opencv2/core/core.hpp>
+
+// Examples
+//  captureCameraImage("http://100.112.117.170:9999/video");
+//  captureCameraImage("/dev/video0");
+void captureCameraImage(std::string source,
+	cv::Mat *frame,
+	std::function<void(const cv::Mat&)> fnc);
 
 #endif

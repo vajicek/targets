@@ -32,6 +32,7 @@ struct TargetExtractorData {
 
 void loadAndPreprocessInput(TargetExtractorData *data,
 	const std::string &filename);
+void preprocessInput(TargetExtractorData *data);
 void extractTargetFace(TargetExtractorData *data,
 	int smoothing, int dilate, int threshold);
 void detectArrows(TargetExtractorData *data,

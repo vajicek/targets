@@ -23,21 +23,22 @@ def xml_to_dataframe(path):
 		tree = ET.parse(xml_file)
 		root = tree.getroot()
 		for member in root.findall('object'):
+			bndbox=member.find('bndbox')
 			value = (root.find('filename').text,
 					 int(root.find('size')[0].text),
 					 int(root.find('size')[1].text),
-					 member[0].text,
-					 int(member[4][0].text),
-					 int(member[4][1].text),
-					 int(member[4][2].text),
-					 int(member[4][3].text)
+					 member.find('name').text,
+					 int(bndbox.find('xmin').text),
+					 int(bndbox.find('ymin').text),
+					 int(bndbox.find('xmax').text),
+					 int(bndbox.find('ymax').text)
 					 )
 			row_list.append(value)
 	column_name = ['filename', 'width', 'height', 'class', 'xmin', 'ymin', 'xmax', 'ymax']
 	return pd.DataFrame(row_list, columns=column_name)
 
 
-def json_to_dataframe(path):
+def json_to_dataframe(path, point_to_rect=15):
 	row_list = []
 	for json_file in glob.glob(path + '/*.json'):
 		with open(json_file, 'r') as read_file:
@@ -52,11 +53,24 @@ def json_to_dataframe(path):
 						label,
 						int(coords[0]),
 						int(coords[1]),
-						int(coords[0]) - 15,
-						int(coords[1]) - 15,
-						int(coords[0]) + 15,
-						int(coords[1]) + 15)
-					row_list.append(row)
+						int(coords[0]) - point_to_rect,
+						int(coords[1]) - point_to_rect,
+						int(coords[0]) + point_to_rect,
+						int(coords[1]) + point_to_rect)
+				if shape['shape_type'] == 'rectangle':
+					coords0 = [float(number) for number in shape['points'][0]]
+					coords1 = [float(number) for number in shape['points'][1]]
+					row = (json_data['imagePath'],
+						int(json_data['imageWidth']),
+						int(json_data['imageHeight']),
+						label,
+						int(sum([coords0[0], coords1[0]]) / 2),
+						int(sum([coords0[1], coords1[1]]) / 2),
+						int(min(coords0[0], coords1[0])),
+						int(min(coords0[1], coords1[1])),
+						int(max(coords0[0], coords1[0])),
+						int(max(coords0[1], coords1[1])))
+				row_list.append(row)
 
 	column_name = ['filename', 'width', 'height', 'class', 'x', 'y', 'xmin', 'ymin', 'xmax', 'ymax']
 	return pd.DataFrame(row_list, columns=column_name)
@@ -81,7 +95,7 @@ def create_tf_example(group, path, label_map_dict):
 	width, height = image.size
 
 	filename = group.filename.encode('utf8')
-	image_format = b'jpg'
+	image_format = b'png'
 	xmins = []
 	xmaxs = []
 	ymins = []
@@ -157,6 +171,18 @@ def write_csv(csv_path, examples):
 def get_label_map_dict(label_path):
 	label_map = label_map_util.load_labelmap(label_path)
 	return label_map_util.get_label_map_dict(label_map)
+
+
+def json_to_tfrecord(image_dir, label_filename, input_filename, output_filename, point_to_rect):
+	label_map_dict = get_label_map_dict(label_filename)
+	examples = json_to_dataframe(input_filename, point_to_rect)
+	write_tfrecord(output_filename, examples, image_dir, label_map_dict)
+
+
+def xml_to_tfrecord(image_dir, label_filename, input_filename, output_filename):
+	label_map_dict = get_label_map_dict(label_filename)
+	examples = xml_to_dataframe(input_filename)
+	write_tfrecord(output_filename, examples, image_dir, label_map_dict)
 
 
 def main():

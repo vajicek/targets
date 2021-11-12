@@ -24,15 +24,15 @@ def xml_to_dataframe(path):
 		root = tree.getroot()
 		for member in root.findall('object'):
 			bndbox=member.find('bndbox')
-			value = (root.find('filename').text,
-					 int(root.find('size')[0].text),
-					 int(root.find('size')[1].text),
-					 member.find('name').text,
-					 int(bndbox.find('xmin').text),
-					 int(bndbox.find('ymin').text),
-					 int(bndbox.find('xmax').text),
-					 int(bndbox.find('ymax').text)
-					 )
+			value = (
+				root.find('filename').text,
+				int(root.find('size')[0].text),
+				int(root.find('size')[1].text),
+				member.find('name').text,
+				int(bndbox.find('xmin').text),
+				int(bndbox.find('ymin').text),
+				int(bndbox.find('xmax').text),
+				int(bndbox.find('ymax').text))
 			row_list.append(value)
 	column_name = ['filename', 'width', 'height', 'class', 'xmin', 'ymin', 'xmax', 'ymax']
 	return pd.DataFrame(row_list, columns=column_name)
@@ -45,9 +45,13 @@ def json_to_dataframe(path, point_to_rect=15):
 			json_data = json.load(read_file)
 			for shape in json_data['shapes']:
 				label = shape['label']
+				# print(json_file)
+				# print(shape)
+				# return
 				if shape['shape_type'] == 'point':
 					coords = [float(number) for number in shape['points'][0]]
-					row = (json_data['imagePath'],
+					row = (
+						json_data['imagePath'],
 						int(json_data['imageWidth']),
 						int(json_data['imageHeight']),
 						label,
@@ -60,7 +64,8 @@ def json_to_dataframe(path, point_to_rect=15):
 				if shape['shape_type'] == 'rectangle':
 					coords0 = [float(number) for number in shape['points'][0]]
 					coords1 = [float(number) for number in shape['points'][1]]
-					row = (json_data['imagePath'],
+					row = (
+						json_data['imagePath'],
 						int(json_data['imageWidth']),
 						int(json_data['imageHeight']),
 						label,

@@ -1,0 +1,10 @@
+[FORMAT]
+indent-string=\t
+max-line-length=160
+
+[MESSAGES CONTROL]
+disable=C0330,C0103,E1101,C0116,C0115
+
+[BASIC]
+function-naming-style=camelCase
+method-naming-style=camelCase

@@ -25,6 +25,7 @@ import androidx.core.app.ActivityCompat;
 import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.Executors;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 
 public class CameraCapture {
@@ -34,20 +35,19 @@ public class CameraCapture {
     final Activity activity;
     final SurfaceView surfaceView;
 
-    public CameraCapture(MainActivity activity, SurfaceView surfaceView) {
+    public CameraCapture(final MainActivity activity, final SurfaceView surfaceView) {
         this.activity = activity;
         this.surfaceView = surfaceView;
     }
 
-    public void startCameraStream(Context context) {
+    public void startCameraStream(final Context context) {
         final var cameraManager = (CameraManager) activity.getSystemService(Context.CAMERA_SERVICE);
         try {
             final var cameraIdList = Arrays.asList(cameraManager.getCameraIdList());
             if (ActivityCompat.checkSelfPermission(context, Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
-                LOG.info("permission not granted");
+                LOG.warning("Camera permission not granted");
                 return;
             }
-            LOG.info("manager.openCamera");
             cameraManager.openCamera(cameraIdList.get(0), getCameraStateCallback(), null);
         } catch (CameraAccessException e) {
             e.printStackTrace();
@@ -59,22 +59,19 @@ public class CameraCapture {
             @RequiresApi(api = Build.VERSION_CODES.R)
             @Override
             public void onOpened(@NonNull CameraDevice cameraDevice) {
-                LOG.info("ON OPENED");
                 try {
                     cameraDevice.createCaptureSession(getSessionConfiguration());
                 } catch (CameraAccessException e) {
-                    e.printStackTrace();
+                    LOG.log(Level.SEVERE, "Camera capture error", e);
                 }
             }
 
             @Override
             public void onDisconnected(@NonNull CameraDevice cameraDevice) {
-                LOG.info("onDisconnected");
             }
 
             @Override
             public void onError(@NonNull CameraDevice cameraDevice, int i) {
-                LOG.info("onError");
             }
         };
     }

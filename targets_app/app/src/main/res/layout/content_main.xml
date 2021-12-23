@@ -55,11 +55,18 @@
                 android:text="Capture" />
 
             <Button
-                android:id="@+id/download"
+                android:id="@+id/getfiles"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:text="Download" />
+                android:text="Get Files" />
+
+            <Button
+                android:id="@+id/deleteall"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="Delete All" />
         </LinearLayout>
     </LinearLayout>
 

@@ -4,15 +4,23 @@ import android.net.ConnectivityManager;
 import android.net.NetworkCapabilities;
 
 import com.google.api.client.auth.oauth2.Credential;
+import com.google.api.client.googleapis.batch.json.JsonBatchCallback;
+import com.google.api.client.googleapis.json.GoogleJsonError;
+import com.google.api.client.http.HttpHeaders;
+import com.google.api.client.http.InputStreamContent;
 import com.google.api.client.http.javanet.NetHttpTransport;
 import com.google.api.client.json.jackson2.JacksonFactory;
 import com.google.api.services.drive.Drive;
 import com.google.api.services.drive.model.File;
 import com.google.api.services.drive.model.FileList;
+import com.google.api.services.drive.model.Permission;
 
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 import java.util.logging.Level;
@@ -20,6 +28,7 @@ import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
 import io.vavr.CheckedRunnable;
+import io.vavr.control.Try;
 
 public class DriveClient {
 
@@ -36,12 +45,25 @@ public class DriveClient {
         this.service = getDriveService();
     }
 
-    public void download() {
-        getDataFromApiSafe(this::getFileList);
+    public CompletableFuture<List<File>> getFileList() {
+        final var result = new CompletableFuture<List<File>>();
+        getDataFromApiSafe(() -> result.complete(this.getFileListInternal()));
+        return result;
     }
 
-    public void upload() {
-        getDataFromApiSafe(this::uploadImage);
+    public CompletableFuture<File> uploadJpeg(final String filename, final ByteBuffer byteBuffer) {
+        final var result = new CompletableFuture<File>();
+        getDataFromApiSafe(() -> result.complete(uploadJpegInternal(filename, byteBuffer)));
+        return result;
+    }
+
+    public CompletableFuture<Void> deleteFile(final List<String> fileIds) {
+        final var result = new CompletableFuture<Void>();
+        getDataFromApiSafe(() -> {
+            deleteFileInternal(fileIds);
+            result.complete(null);
+        });
+        return result;
     }
 
     private boolean isDeviceOnline() {
@@ -71,25 +93,67 @@ public class DriveClient {
         }
     }
 
-    private Void uploadImage() throws IOException {
-        return null;
+    private File uploadJpegInternal(final String filename, final ByteBuffer byteBuffer) throws IOException {
+        final var fileMetadata = new File();
+        fileMetadata.setName(filename);
+
+        byte[] bytes = new byte[byteBuffer.remaining()];
+        byteBuffer.get(bytes);
+
+        final var byteArrayInputStream = new ByteArrayInputStream(bytes);
+        final var mediaContent = new InputStreamContent("image/jpeg", byteArrayInputStream);
+        return service.files()
+                .create(fileMetadata, mediaContent)
+                .setFields("id")
+                .execute();
     }
 
-    private List<String> getFileList() throws IOException {
-        final var result = new ArrayList<String>();
+    private void setUserWritePermissions(final String fileId, final String email) throws IOException {
+        Permission userPermission = new Permission()
+                .setEmailAddress(email)
+                .setType("user")
+                .setRole("writer");
+        service.permissions()
+                .create(fileId, userPermission)
+                .setFields("id")
+                .execute();
+    }
+
+    private List<File> getFileListInternal() throws IOException {
+        final var result = new ArrayList<File>();
         final var request = service.files().list();
         do {
             FileList files = request
                     .execute();
             result.addAll(files.getFiles()
                     .stream()
-                    .peek(f -> LOG.info(f.getName()))
-                    .map(File::getName)
+                    .peek(file -> LOG.info(String.format("%s %s", file.getName(), file.getId())))
                     .collect(Collectors.toList()));
             request.setPageToken(files.getNextPageToken());
         } while (request.getPageToken() != null &&
                 request.getPageToken().length() > 0);
         return result;
+    }
+
+    private void deleteFileInternal(final List<String> fileIds) throws IOException {
+        final var callback = new JsonBatchCallback<Void>() {
+            @Override
+            public void onSuccess(Void aVoid, HttpHeaders responseHeaders) throws IOException {
+            }
+
+            @Override
+            public void onFailure(GoogleJsonError e, HttpHeaders responseHeaders) throws IOException {
+            }
+        };
+
+        final var batch = service.batch();
+        fileIds.forEach(fileId -> Try.of(() -> {
+            service.files()
+                    .delete(fileId)
+                    .queue(batch, callback);
+            return null;
+        }));
+        batch.execute();
     }
 
     private Drive getDriveService() {

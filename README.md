@@ -18,10 +18,12 @@
 
 ### Detection using MobileNet SSD model with Tensorflow (2.6)
 * running on PC.
+
 ![idea](doc/img/preliminary_tf.png)
 
 ### Detection using MobileNet SSD model with Tensorflow Lite (2.5)
 * still running on PC.
+
 ![idea](doc/img/preliminary_tflite.png)
 
 ### Detection using MobileNet SSD model with Tensorflow Lite (2.5)

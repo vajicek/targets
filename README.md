@@ -1,11 +1,11 @@
-= Targets - AI driven archery scoring
+# Targets - AI driven archery scoring
 
-== Idea - a picture is worth a thousand words
+## Idea - a picture is worth a thousand words
 
 ![idea](doc/img/idea.svg)
 
 
-== How to do it
+## How to do it
 
 * Use object detection api in TensorFlow (v2.0+)
   * Train model on given annotated examples

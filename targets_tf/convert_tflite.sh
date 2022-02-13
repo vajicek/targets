@@ -8,20 +8,20 @@ set -e
 #MODEL=my_ssd_mobnet
 MODEL=my_ssd_mobnet_640
 
-python3 Tensorflow/models/research/object_detection/exporter_main_v2.py \
---input_type=image_tensor \
---pipeline_config_path=Tensorflow/workspace/models/${MODEL}/pipeline.config \
---trained_checkpoint_dir=Tensorflow/workspace/models/${MODEL} \
---output_directory=Tensorflow/workspace/models/${MODEL}/export
+#python3 Tensorflow/models/research/object_detection/exporter_main_v2.py \
+#--input_type=image_tensor \
+#--pipeline_config_path=Tensorflow/workspace/models/${MODEL}/pipeline.config \
+#--trained_checkpoint_dir=Tensorflow/workspace/models/${MODEL} \
+#--output_directory=Tensorflow/workspace/models/${MODEL}/export
 
 python3 Tensorflow/models/research/object_detection/export_tflite_graph_tf2.py \
 --pipeline_config_path=Tensorflow/workspace/models/${MODEL}/pipeline.config \
 --trained_checkpoint_dir=Tensorflow/workspace/models/${MODEL} \
 --output_directory=Tensorflow/workspace/models/${MODEL}/tfliteexport
 
-~/.local/bin/tflite_convert \
---saved_model_dir=Tensorflow/workspace/models/${MODEL}/tfliteexport/saved_model \
---output_file=Tensorflow/workspace/models/${MODEL}/tfliteexport/saved_model/detect.tflite
+#~/.local/bin/tflite_convert \
+#--saved_model_dir=Tensorflow/workspace/models/${MODEL}/tfliteexport/saved_model \
+#--output_file=Tensorflow/workspace/models/${MODEL}/tfliteexport/saved_model/detect.tflite
 #\
 #--input_shapes=1,640,640,3 \
 #--input_arrays=normalized_input_image_tensor \

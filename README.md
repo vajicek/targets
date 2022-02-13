@@ -13,3 +13,12 @@
 * Implement modile (Android) application
   * Capture image from camera
   * Process image, send it to model for classification
+
+
+## Preliminary results
+
+### Detection using MobileNet SSD model with Tensorflow (2.7), running on PC.
+![idea](doc/img/preliminary_tf.png)
+
+### Detection using MobileNet SSD model with Tensorflow Lite (2.7), still running on PC.
+![idea](doc/img/preliminary_tflite.png)

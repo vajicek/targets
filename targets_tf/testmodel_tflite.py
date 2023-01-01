@@ -11,11 +11,15 @@ def _get_tflite_model(model):
 
 
 def _preprocess_image(image_path):
+    print(image_path)
     img = tf.io.read_file(image_path)
-    img = tf.io.decode_image(img, channels=3)
+    img = tf.io.decode_image(img)
+    print(img.shape)
+    print(img[0, 0:10, :])
     img = tf.image.convert_image_dtype(img, tf.float32)
     original_image = img
-    resized_img = tf.image.resize(img, (640, 640))
+    resized_img = img
+    # resized_img = tf.image.resize(img, (640, 640))
     resized_img = resized_img[tf.newaxis, :]
     return resized_img, original_image
 
@@ -27,13 +31,16 @@ def _get_output_tensor(interpreter, index):
 
 
 def _detect_objects(interpreter, image, threshold):
+    print(image.shape)
+    print(image.dtype)
+    print(image[0, 0, 0:10])
     interpreter.set_tensor(interpreter.get_input_details()[0]['index'], image)
     interpreter.invoke()
 
     scores = _get_output_tensor(interpreter, 0)
     boxes = _get_output_tensor(interpreter, 1)
-    count = int(get_output_tensor(interpreter, 2))
-    classes = get_output_tensor(interpreter, 3)
+    count = int(_get_output_tensor(interpreter, 2))
+    classes = _get_output_tensor(interpreter, 3)
     results = []
     for i in range(count):
         if scores[i] >= threshold:

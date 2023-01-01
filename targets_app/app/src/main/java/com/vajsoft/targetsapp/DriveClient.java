@@ -1,5 +1,6 @@
 package com.vajsoft.targetsapp;
 
+import android.media.Image;
 import android.net.ConnectivityManager;
 import android.net.NetworkCapabilities;
 
@@ -17,7 +18,6 @@ import com.google.api.services.drive.model.Permission;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
-import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
@@ -51,9 +51,9 @@ public class DriveClient {
         return result;
     }
 
-    public CompletableFuture<File> uploadJpeg(final String filename, final ByteBuffer byteBuffer) {
+    public CompletableFuture<File> uploadJpeg(final String filename, final Image image) {
         final var result = new CompletableFuture<File>();
-        getDataFromApiSafe(() -> result.complete(uploadJpegInternal(filename, byteBuffer)));
+        getDataFromApiSafe(() -> result.complete(uploadJpegInternal(filename, image)));
         return result;
     }
 
@@ -93,15 +93,16 @@ public class DriveClient {
         }
     }
 
-    private File uploadJpegInternal(final String filename, final ByteBuffer byteBuffer) throws IOException {
+    private File uploadJpegInternal(final String filename, final Image image) throws IOException {
         final var fileMetadata = new File();
         fileMetadata.setName(filename);
 
-        byte[] bytes = new byte[byteBuffer.remaining()];
-        byteBuffer.get(bytes);
+        final var imageByteBuffer = image.getPlanes()[0].getBuffer();
 
-        final var byteArrayInputStream = new ByteArrayInputStream(bytes);
-        final var mediaContent = new InputStreamContent("image/jpeg", byteArrayInputStream);
+        byte[] bytes = new byte[imageByteBuffer.remaining()];
+        imageByteBuffer.get(bytes);
+
+        final var mediaContent = new InputStreamContent("image/jpeg", new ByteArrayInputStream(bytes));
         return service.files()
                 .create(fileMetadata, mediaContent)
                 .setFields("id")

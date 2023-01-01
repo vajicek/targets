@@ -21,31 +21,58 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent">
 
-        <SurfaceView
-            android:id="@+id/surfaceView"
+        <androidx.constraintlayout.widget.ConstraintLayout
+            android:layout_weight="0"
             android:layout_width="match_parent"
-            android:layout_height="206dp" />
+            android:layout_height="wrap_content">
 
-        <EditText
-            android:id="@+id/editTextTextMultiLine2"
+            <FrameLayout
+                android:layout_width="0dp"
+                android:layout_height="0dp"
+                android:layout_marginEnd="0dp"
+                android:layout_marginStart="0dp"
+                android:layout_marginTop="0dp"
+                android:background="@android:color/black"
+                app:layout_constraintDimensionRatio="H,1:1"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toTopOf="parent">
+
+                <SurfaceView
+                    android:id="@+id/surfaceView"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent" />
+
+            </FrameLayout>
+        </androidx.constraintlayout.widget.ConstraintLayout>
+
+        <TextView
+            android:id="@+id/textView"
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_weight="2"
-            android:ems="10"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
             android:inputType="textMultiLine"
-            tools:ignore="SpeakableTextPresentCheck" />
+            android:text="" />
 
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:layout_weight="0"
             android:orientation="horizontal">
 
             <Button
-                android:id="@+id/upload"
+                android:id="@+id/detect"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:text="Upload" />
+                android:text="Detect" />
+
+<!--            <Button-->
+<!--                android:id="@+id/upload"-->
+<!--                android:layout_width="wrap_content"-->
+<!--                android:layout_height="wrap_content"-->
+<!--                android:layout_weight="1"-->
+<!--                android:text="Upload" />-->
 
             <Button
                 android:id="@+id/capture"
@@ -55,18 +82,25 @@
                 android:text="Capture" />
 
             <Button
-                android:id="@+id/getfiles"
+                android:id="@+id/snap"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:text="Get Files" />
+                android:text="Snap" />
 
-            <Button
-                android:id="@+id/deleteall"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:text="Delete All" />
+            <!--            <Button-->
+<!--                android:id="@+id/getfiles"-->
+<!--                android:layout_width="wrap_content"-->
+<!--                android:layout_height="wrap_content"-->
+<!--                android:layout_weight="1"-->
+<!--                android:text="Get Files" />-->
+
+<!--            <Button-->
+<!--                android:id="@+id/deleteall"-->
+<!--                android:layout_width="wrap_content"-->
+<!--                android:layout_height="wrap_content"-->
+<!--                android:layout_weight="1"-->
+<!--                android:text="Delete All" />-->
         </LinearLayout>
     </LinearLayout>
 

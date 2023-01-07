@@ -3,6 +3,8 @@ package com.vajsoft.targetsapp;
 import android.Manifest;
 import android.content.Context;
 import android.content.pm.PackageManager;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.graphics.ImageFormat;
 import android.graphics.Rect;
 import android.hardware.camera2.CameraAccessException;
@@ -26,6 +28,7 @@ import androidx.annotation.NonNull;
 import androidx.annotation.RequiresApi;
 import androidx.core.app.ActivityCompat;
 
+import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
@@ -36,55 +39,184 @@ import java.util.concurrent.Executors;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-import io.vavr.CheckedFunction2;
-
 public class CameraCapture {
 
     static private final Logger LOG = Logger.getLogger(CameraCapture.class.getName());
 
     final CameraManager cameraManager;
 
+    CameraDevice cameraDevice;
+
     public CameraCapture(final CameraManager cameraManager) {
         this.cameraManager = cameraManager;
     }
 
     @RequiresApi(api = Build.VERSION_CODES.R)
+    public void stopCameraStream() {
+        closeCamera(null, null);
+    }
+
+    @RequiresApi(api = Build.VERSION_CODES.R)
     public void startCameraStream(final Context context, final Surface surface) {
         final var outputConfigurations = List.of(new OutputConfiguration(surface));
-        final var sessionConfiguration = getSessionConfiguration(
+        final var previewSessionConfiguration = new SessionConfiguration(
+                SessionConfiguration.SESSION_REGULAR,
                 outputConfigurations,
-                surface,
-                this::captureContinuous);
-        openCamera(context, getCameraStateCallback(sessionConfiguration));
+                Executors.newCachedThreadPool(),
+                getPreviewCameraCaptureSessionStateCallback(surface));
+
+        try {
+            if (ActivityCompat.checkSelfPermission(context, Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
+                LOG.warning("Camera permission not granted");
+                return;
+            }
+            cameraManager.openCamera(getCameraId(), getCameraStateCallback(previewSessionConfiguration), null);
+        } catch (CameraAccessException exception) {
+            LOG.log(Level.SEVERE, "Error while streaming from camera", exception);
+        }
+    }
+
+    private CameraCaptureSession.StateCallback getPreviewCameraCaptureSessionStateCallback(final Surface surface) {
+        return new CameraCaptureSession.StateCallback() {
+
+            @Override
+            public void onConfigured(@NonNull CameraCaptureSession cameraCaptureSession) {
+                LOG.info("onConfigured");
+                previewCaptureRequest(cameraCaptureSession, surface);
+            }
+
+            @Override
+            public void onConfigureFailed(@NonNull CameraCaptureSession cameraCaptureSession) {
+                LOG.info("onConfigureFailed");
+            }
+        };
+    }
+
+    private void previewCaptureRequest(final CameraCaptureSession cameraCaptureSession,
+                                       final Surface surface) {
+        try {
+            final CaptureRequest.Builder captureRequestBuilder = cameraCaptureSession
+                    .getDevice()
+                    .createCaptureRequest(CameraDevice.TEMPLATE_PREVIEW);
+            captureRequestBuilder.addTarget(surface);
+            captureRequestBuilder.set(CaptureRequest.SCALER_CROP_REGION, getSquaredCaptureRegion());
+            cameraCaptureSession.setRepeatingRequest(
+                    captureRequestBuilder.build(),
+                    new CameraCaptureSession.CaptureCallback() {
+                    },
+                    new Handler(Looper.getMainLooper())
+            );
+        } catch (CameraAccessException exception) {
+            LOG.log(Level.SEVERE, "Error while capturing request", exception);
+        }
+    }
+
+    private CameraDevice.StateCallback getCameraStateCallback(final SessionConfiguration sessionConfiguration) {
+        return new CameraDevice.StateCallback() {
+
+            @Override
+            public void onClosed(@NonNull CameraDevice camera) {
+                LOG.info("onClosed");
+            }
+
+            @RequiresApi(api = Build.VERSION_CODES.R)
+            @Override
+            public void onOpened(@NonNull CameraDevice newCameraDevice) {
+                try {
+                    cameraDevice = newCameraDevice;
+                    cameraDevice.createCaptureSession(sessionConfiguration);
+                } catch (CameraAccessException e) {
+                    LOG.log(Level.SEVERE, "Camera capture error", e);
+                }
+            }
+
+            @Override
+            public void onDisconnected(@NonNull CameraDevice cameraDevice) {
+                LOG.log(Level.SEVERE, "onDisconnected");
+            }
+
+            @Override
+            public void onError(@NonNull CameraDevice cameraDevice, int i) {
+                LOG.log(Level.SEVERE, "onError");
+            }
+        };
     }
 
     @RequiresApi(api = Build.VERSION_CODES.R)
-    public void stopCameraStream(final Context context, final Surface surface) {
-    }
-
-    @RequiresApi(api = Build.VERSION_CODES.R)
-    public CompletableFuture<Image> captureImage(final Context context, final Surface surface, final Size targetSize) {
-        final var result = new CompletableFuture<Image>();
+    public CompletableFuture<Bitmap> captureImage(final Size targetSize) {
+        final var captureImageResult = new CompletableFuture<Bitmap>();
         final var imageReader = ImageReader.newInstance(
                 targetSize.getWidth(),
                 targetSize.getHeight(),
                 ImageFormat.JPEG,
                 1);
 
-        final var outputConfigurations = surface == null ?
-                List.of(new OutputConfiguration(imageReader.getSurface())) :
-                List.of(new OutputConfiguration(surface), new OutputConfiguration(imageReader.getSurface()));
-        final CheckedFunction2<CameraCaptureSession, CaptureRequest.Builder, Integer> submitCaptureRequest = (
-                final CameraCaptureSession cameraCaptureSession,
-                final CaptureRequest.Builder captureRequestBuilder) ->
-                this.captureSingle(cameraCaptureSession, captureRequestBuilder, imageReader, result);
+        final var outputConfigurations = List.of(new OutputConfiguration(imageReader.getSurface()));
+        final var captureSessionConfiguration = new SessionConfiguration(
+                SessionConfiguration.SESSION_REGULAR,
+                outputConfigurations,
+                Executors.newCachedThreadPool(),
+                getCaptureCameraCaptureSessionStateCallback(imageReader, captureImageResult));
 
-        final var sessionConfiguration =
-                getSessionConfiguration(outputConfigurations, surface, submitCaptureRequest);
+        try {
+            cameraDevice.createCaptureSession(captureSessionConfiguration);
+        } catch (CameraAccessException e) {
+            LOG.log(Level.SEVERE, "Camera capture error", e);
+        }
 
-        openCamera(context, getCameraStateCallback(sessionConfiguration));
+        return captureImageResult;
+    }
 
-        return result;
+    private CameraCaptureSession.StateCallback getCaptureCameraCaptureSessionStateCallback(
+            final ImageReader imageReader,
+            final CompletableFuture<Bitmap> result) {
+
+        return new CameraCaptureSession.StateCallback() {
+
+            @Override
+            public void onConfigured(@NonNull CameraCaptureSession cameraCaptureSession) {
+                LOG.info("onConfigured");
+                singleCaptureRequest(cameraCaptureSession, imageReader, result);
+            }
+
+            @Override
+            public void onConfigureFailed(@NonNull CameraCaptureSession cameraCaptureSession) {
+                LOG.info("onConfigureFailed");
+            }
+        };
+    }
+
+    private void singleCaptureRequest(final CameraCaptureSession cameraCaptureSession,
+                                      final ImageReader imageReader,
+                                      final CompletableFuture<Bitmap> captureImageResult) {
+        try {
+            final CaptureRequest.Builder captureRequestBuilder = cameraCaptureSession
+                    .getDevice()
+                    .createCaptureRequest(CameraDevice.TEMPLATE_STILL_CAPTURE);
+            captureRequestBuilder.addTarget(imageReader.getSurface());
+
+            imageReader.setOnImageAvailableListener(
+                    reader -> {
+                        LOG.info("onImageAvailableListener");
+                        captureImageResult.complete(imageToBitmap(imageReader.acquireLatestImage()));
+                        closeCamera(imageReader, cameraCaptureSession);
+                    },
+                    new Handler(Looper.getMainLooper()));
+
+            cameraCaptureSession.captureSingleRequest(
+                    captureRequestBuilder.build(),
+                    Executors.newCachedThreadPool(),
+                    new CameraCaptureSession.CaptureCallback() {
+                        public void onCaptureCompleted(
+                                final CameraCaptureSession session,
+                                final CaptureRequest request,
+                                final TotalCaptureResult captureResult) {
+                            LOG.info("onCaptureCompleted");
+                        }
+                    });
+        } catch (CameraAccessException exception) {
+            LOG.log(Level.SEVERE, "Error while capturing request", exception);
+        }
     }
 
     public Optional<Size> getCameraImageSize() {
@@ -126,113 +258,6 @@ public class CameraCapture {
         return cameraIdList.get(0);
     }
 
-    private void openCamera(final Context context, final CameraDevice.StateCallback stateCallback) {
-        try {
-            if (ActivityCompat.checkSelfPermission(context, Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
-                LOG.warning("Camera permission not granted");
-                return;
-            }
-            cameraManager.openCamera(getCameraId(), stateCallback, null);
-        } catch (CameraAccessException exception) {
-            LOG.log(Level.SEVERE, "Error while streaming from camera", exception);
-        }
-    }
-
-    private CameraDevice.StateCallback getCameraStateCallback(final SessionConfiguration sessionConfiguration) {
-        return new CameraDevice.StateCallback() {
-            @RequiresApi(api = Build.VERSION_CODES.R)
-            @Override
-            public void onOpened(@NonNull CameraDevice cameraDevice) {
-                try {
-                    cameraDevice.createCaptureSession(sessionConfiguration);
-                } catch (CameraAccessException e) {
-                    LOG.log(Level.SEVERE, "Camera capture error", e);
-                }
-            }
-
-            @Override
-            public void onDisconnected(@NonNull CameraDevice cameraDevice) {
-                LOG.log(Level.SEVERE, "onDisconnected");
-            }
-
-            @Override
-            public void onError(@NonNull CameraDevice cameraDevice, int i) {
-                LOG.log(Level.SEVERE, "onError");
-            }
-        };
-    }
-
-    @RequiresApi(api = Build.VERSION_CODES.R)
-    private SessionConfiguration getSessionConfiguration(
-            final List<OutputConfiguration> outputConfigurationList,
-            final Surface surface,
-            final CheckedFunction2<CameraCaptureSession, CaptureRequest.Builder, Integer> submitCaptureRequest) {
-        return new SessionConfiguration(
-                SessionConfiguration.SESSION_REGULAR,
-                outputConfigurationList,
-                Executors.newCachedThreadPool(),
-                getCameraCaptureSessionStateCallback(surface, submitCaptureRequest));
-    }
-
-    private CameraCaptureSession.StateCallback getCameraCaptureSessionStateCallback(
-            final Surface surface,
-            final CheckedFunction2<CameraCaptureSession, CaptureRequest.Builder, Integer> submitCaptureRequest) {
-        return new CameraCaptureSession.StateCallback() {
-
-            @Override
-            public void onConfigured(@NonNull CameraCaptureSession cameraCaptureSession) {
-                LOG.info("onConfigured");
-                captureRequest(cameraCaptureSession, surface, submitCaptureRequest);
-            }
-
-            @Override
-            public void onConfigureFailed(@NonNull CameraCaptureSession cameraCaptureSession) {
-                LOG.info("onConfigureFailed");
-            }
-        };
-    }
-
-    private void captureRequest(final CameraCaptureSession cameraCaptureSession,
-                                final Surface surface,
-                                final CheckedFunction2<CameraCaptureSession, CaptureRequest.Builder, Integer> submitCaptureRequest) {
-        try {
-            final CaptureRequest.Builder captureRequestBuilder = cameraCaptureSession
-                    .getDevice()
-                    .createCaptureRequest(CameraDevice.TEMPLATE_PREVIEW);
-            if (surface != null) {
-                captureRequestBuilder.addTarget(surface);
-                //captureRequestBuilder.set(CaptureRequest.SCALER_CROP_REGION, getSquaredCaptureRegion());
-            }
-            submitCaptureRequest.apply(cameraCaptureSession, captureRequestBuilder);
-        } catch (Throwable throwable) {
-            LOG.log(Level.SEVERE, "Error while capturing request", throwable);
-        }
-    }
-
-    private Integer captureSingle(final CameraCaptureSession cameraCaptureSession,
-                                  final CaptureRequest.Builder captureRequestBuilder,
-                                  final ImageReader imageReader,
-                                  final CompletableFuture<Image> result) throws CameraAccessException {
-        captureRequestBuilder.addTarget(imageReader.getSurface());
-
-        imageReader.setOnImageAvailableListener(
-                reader -> result.complete(imageReader.acquireLatestImage()),
-                new Handler(Looper.getMainLooper()));
-
-        return cameraCaptureSession.captureSingleRequest(
-                captureRequestBuilder.build(),
-                Executors.newCachedThreadPool(),
-                new CameraCaptureSession.CaptureCallback() {
-                    public void onCaptureCompleted(
-                            final CameraCaptureSession session,
-                            final CaptureRequest request,
-                            final TotalCaptureResult captureResult) {
-                        closeCamera(imageReader, cameraCaptureSession);
-                        LOG.info("onCaptureCompleted");
-                    }
-                });
-    }
-
     private void closeCamera(final ImageReader imageReader,
                              final CameraCaptureSession cameraCaptureSession) {
         LOG.info("closeCamera");
@@ -249,13 +274,15 @@ public class CameraCapture {
         }
     }
 
-    private Integer captureContinuous(final CameraCaptureSession cameraCaptureSession,
-                                      final CaptureRequest.Builder captureRequestBuilder) throws CameraAccessException {
-        return cameraCaptureSession.setRepeatingRequest(
-                captureRequestBuilder.build(),
-                new CameraCaptureSession.CaptureCallback() {
-                },
-                new Handler(Looper.getMainLooper())
-        );
+    private Bitmap imageToBitmap(final Image image) {
+        LOG.info(String.format("img >>>>>>> %d, %d", image.getWidth(), image.getHeight()));
+
+        ByteBuffer buffer = image.getPlanes()[0].getBuffer();
+        byte[] bytes = new byte[buffer.capacity()];
+        buffer.get(bytes);
+        final var bmp = BitmapFactory.decodeByteArray(bytes, 0, bytes.length, null);
+
+        LOG.info(String.format("bmp >>>>>>> %d, %d", bmp.getWidth(), bmp.getHeight()));
+        return bmp;
     }
 }

@@ -4,17 +4,15 @@ import android.Manifest;
 import android.content.Context;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
-import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Matrix;
 import android.graphics.Paint;
 import android.hardware.camera2.CameraManager;
-import android.media.Image;
 import android.net.ConnectivityManager;
 import android.os.Build;
 import android.os.Bundle;
-import android.util.Size;
+import android.text.method.ScrollingMovementMethod;
 import android.view.SurfaceView;
 import android.view.View;
 import android.widget.TextView;
@@ -29,9 +27,11 @@ import com.google.api.client.googleapis.auth.oauth2.GoogleCredential;
 import com.google.api.services.drive.DriveScopes;
 import com.google.api.services.drive.model.File;
 
-import java.io.IOException;
-import java.nio.ByteBuffer;
+import java.time.Duration;
+import java.time.Instant;
 import java.util.List;
+import java.util.Locale;
+import java.util.concurrent.CompletableFuture;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
@@ -39,11 +39,14 @@ public class MainActivity extends AppCompatActivity {
     static private final Logger LOG = Logger.getLogger(MainActivity.class.getName());
 
     TextView textView;
-    SurfaceView surfaceView;
+    SurfaceView cameraPreview;
+    SurfaceView resultView;
 
     CameraCapture cameraCapture;
     DriveClient driveClient;
     ModelInference modelInference;
+
+    Bitmap detectionInput;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -51,7 +54,10 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
 
         textView = findViewById(R.id.textView);
-        surfaceView = findViewById(R.id.surfaceView);
+        textView.setMovementMethod(new ScrollingMovementMethod());
+
+        cameraPreview = findViewById(R.id.cameraPreview);
+        resultView = findViewById(R.id.resultView);
 
         findViewById(R.id.detect).setOnClickListener(this::onDetectClick);
         findViewById(R.id.capture).setOnClickListener(this::onCaptureClick);
@@ -86,19 +92,22 @@ public class MainActivity extends AppCompatActivity {
 
     @RequiresApi(api = Build.VERSION_CODES.R)
     public void onDetectClick(final View view) {
-        try {
-            final var inputStream = getAssets().open("testdata.jpg");
-            final var bitmap = BitmapFactory.decodeStream(inputStream);
-            modelInference.run(bitmap)
-                    .thenAccept(this::drawResults);
-        } catch (IOException ex) {
-            LOG.info("Failed to load image");
-        }
+        final var start = Instant.now();
+        printLine("Running detection");
+        modelInference.run(detectionInput)
+                .thenCompose(this::drawResults)
+                .thenAccept(aVoid -> printLine(String.format(
+                        Locale.getDefault(),
+                        "Finished in: %.3f seconds",
+                        Duration.between(start, Instant.now()).toMillis() / 1000.f)));
     }
 
-    void drawResults(final ModelOutputs outputs) {
+    private CompletableFuture<Void> drawResults(final ModelOutputs outputs) {
+        final var result = new CompletableFuture<Void>();
         runOnUiThread(() -> {
-            Canvas canvas = surfaceView.getHolder().lockCanvas();
+            printLine("Drawing results");
+            Canvas canvas = resultView.getHolder().lockCanvas();
+            canvas.scale(resultView.getWidth() / 640.0f, resultView.getWidth() / 640.0f);
             canvas.drawBitmap(outputs.inputImage, new Matrix(), null);
             final var paint = new Paint();
             paint.setStyle(Paint.Style.FILL);
@@ -117,54 +126,60 @@ public class MainActivity extends AppCompatActivity {
                         0.5f * 640 * radius,
                         paint);
             }
-            surfaceView.getHolder().unlockCanvasAndPost(canvas);
-            textView.setText(outputs.toString());
+            resultView.getHolder().unlockCanvasAndPost(canvas);
+            printLine(outputs.toString());
+            result.complete(null);
         });
+        return result;
     }
 
     @RequiresApi(api = Build.VERSION_CODES.R)
     public void onCaptureClick(final View view) {
-        cameraCapture.startCameraStream(this, surfaceView.getHolder().getSurface());
+        resultView.setVisibility(View.INVISIBLE);
+        cameraPreview.setVisibility(View.VISIBLE);
+        cameraCapture.startCameraStream(this, cameraPreview.getHolder().getSurface());
+        printLine("Start streaming camera");
     }
 
     @RequiresApi(api = Build.VERSION_CODES.R)
     public void onSnapClick(final View view) {
-        cameraCapture.captureImage(this,
-                //surfaceView.getHolder().getSurface(),
-                null,
-                cameraCapture.getCameraImageSize().orElseThrow(() -> new RuntimeException("xyz"))
-                //new Size(640, 640)
-        )
-                .thenAccept(image -> {
-                    runOnUiThread(() -> {
-                        final var inputImage = imageToBitmap(image);
-                        Canvas canvas = surfaceView.getHolder().lockCanvas();
-
-                        final var m = new Matrix();
-                        m.preRotate(90);
-                        m.postTranslate(960, 0);
-                        //m.postTranslate(canvas.getWidth(), 0);
-                        final var scale = 0.5f;//surfaceView.getWidth()/640.0f;
-                        m.postScale(scale, scale);
-
-                        canvas.drawBitmap(inputImage, m, null);
-                        surfaceView.getHolder().unlockCanvasAndPost(canvas);
-                    });
-//                    modelInference.run(imageToBitmap(image))
-//                            .thenAccept(this::drawResults);
-                });
+        cameraCapture.captureImage(cameraCapture.getCameraImageSize().orElseThrow(() -> new RuntimeException("xyz")))
+                .thenAccept(inputImage -> runOnUiThread(() -> {
+                    cameraPreview.setVisibility(View.INVISIBLE);
+                    resultView.setVisibility(View.VISIBLE);
+                    printLine(String.format(Locale.getDefault(), "Captured input, %d x %d", inputImage.getWidth(), inputImage.getHeight()));
+                    detectionInput = clipRectImage(640, inputImage);
+                    printLine("Clipped and scaled input to 640 x 640");
+                    showInput(detectionInput);
+                }));
     }
 
-    private Bitmap imageToBitmap(final Image image) {
-        LOG.info(String.format("img >>>>>>> %d, %d", image.getWidth(), image.getHeight()));
+    private void printLine(final String str) {
+        textView.setText(String.format("%s\n%s", textView.getText(), str));
+    }
 
-        ByteBuffer buffer = image.getPlanes()[0].getBuffer();
-        byte[] bytes = new byte[buffer.capacity()];
-        buffer.get(bytes);
-        final var bmp = BitmapFactory.decodeByteArray(bytes, 0, bytes.length, null);
+    private Bitmap clipRectImage(final int resolution, final Bitmap inputImage) {
+        final var rotateAndTranslate = new Matrix();
+        rotateAndTranslate.preRotate(90);
+        rotateAndTranslate.postTranslate(inputImage.getHeight(), 0);
 
-        LOG.info(String.format("bmp >>>>>>> %d, %d", bmp.getWidth(), bmp.getHeight()));
-        return bmp;
+        final var scaleInputToResultView = resolution / (float)inputImage.getHeight();
+        rotateAndTranslate.postScale(scaleInputToResultView, scaleInputToResultView);
+
+        return Bitmap.createBitmap(inputImage,
+                (inputImage.getWidth() - inputImage.getHeight()), 0,
+                inputImage.getHeight(), inputImage.getHeight(), rotateAndTranslate, true);
+    }
+
+    private void showInput(final Bitmap croppedRotatedBitmap) {
+        Canvas canvas = resultView.getHolder().lockCanvas();
+
+        final var m = new Matrix();
+        final var scaleInputToResultView = resultView.getHeight() / (float)croppedRotatedBitmap.getHeight();
+        m.postScale(scaleInputToResultView, scaleInputToResultView);
+        canvas.drawBitmap(croppedRotatedBitmap, m, null);
+
+        resultView.getHolder().unlockCanvasAndPost(canvas);
     }
 
     @RequiresApi(api = Build.VERSION_CODES.R)

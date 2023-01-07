@@ -39,9 +39,16 @@
                 app:layout_constraintTop_toTopOf="parent">
 
                 <SurfaceView
-                    android:id="@+id/surfaceView"
+                    android:id="@+id/cameraPreview"
                     android:layout_width="match_parent"
-                    android:layout_height="match_parent" />
+                    android:layout_height="match_parent"
+                    android:visibility="invisible" />
+
+                <SurfaceView
+                    android:id="@+id/resultView"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    tools:visibility="visible" />
 
             </FrameLayout>
         </androidx.constraintlayout.widget.ConstraintLayout>
@@ -52,7 +59,9 @@
             android:layout_height="match_parent"
             android:layout_weight="1"
             android:inputType="textMultiLine"
-            android:text="" />
+            android:gravity="bottom"
+            android:scrollbarAlwaysDrawVerticalTrack="true"
+            android:scrollbars="vertical" />
 
         <LinearLayout
             android:layout_width="match_parent"

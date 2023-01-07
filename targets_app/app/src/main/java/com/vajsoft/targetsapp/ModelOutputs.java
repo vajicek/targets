@@ -5,6 +5,8 @@ import android.graphics.Bitmap;
 
 import androidx.annotation.NonNull;
 
+import java.util.Locale;
+
 public class ModelOutputs {
     private static final int NUM_DETECTIONS = 10;
 
@@ -19,16 +21,18 @@ public class ModelOutputs {
     }
 
     @NonNull
-    @SuppressLint("DefaultLocale")
     @Override
     public String toString() {
         final StringBuilder sb = new StringBuilder();
-        sb.append(String.format("numDetections = %f", numDetections[0]));
+        sb.append(String.format(Locale.getDefault(),
+                "numDetections = %f\n",
+                numDetections[0]));
         for (int i = 0; i < outputLocations[0].length; i++) {
             final var loc = outputLocations[0][i];
             final var score = outputScores[0][i];
             final var outputClass = outputClasses[0][i];
-            sb.append(String.format("%.3f, %.3f: %.3f, %.3f, %.3f, %.3f\n",
+            sb.append(String.format(Locale.getDefault(),
+                    "%.3f, %.3f: %.3f, %.3f, %.3f, %.3f\n",
                     score,
                     outputClass,
                     loc[0] * 640,
